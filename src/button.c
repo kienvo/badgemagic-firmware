@@ -67,30 +67,34 @@ __INTERRUPT
 __HIGH_CODE
 void TMR3_IRQHandler(void)
 {
-	static int hold[KEY_INDEX];
+	static int hold[KEY_INDEX], is_longpress[KEY_INDEX];
 
 	if (TMR3_GetITFlag(TMR0_3_IT_CYC_END)) {		
 		if (debounce(KEY1, isPressed(KEY1))) {
 			hold[KEY1]++;
-			if (hold[KEY1] >= LONGPRESS_THRES) {
+			if (hold[KEY1] >= LONGPRESS_THRES && is_longpress[KEY1] == 0) {
+				is_longpress[KEY1] = 1;
 				longPressHandler[KEY1]();
 			}
 		} else {
 			if (IS_INRANGE(hold[KEY1], 0, LONGPRESS_THRES)) {
 				onePressHandler[KEY1]();
 			}
+			is_longpress[KEY1] = 0;
 			hold[KEY1] = 0;
 		}
 
 		if (debounce(KEY2, isPressed(KEY2))) {
 			hold[KEY2]++;
-			if (hold[KEY2] >= LONGPRESS_THRES) {
+			if (hold[KEY2] >= LONGPRESS_THRES  && is_longpress[KEY2] == 0) {
+				is_longpress[KEY2] = 1;
 				longPressHandler[KEY2]();
 			}
 		} else {
 			if (IS_INRANGE(hold[KEY2], 0, LONGPRESS_THRES)) {
 				onePressHandler[KEY2]();
 			}
+			is_longpress[KEY2] = 0;
 			hold[KEY2] = 0;
 		}
 
