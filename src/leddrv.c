@@ -142,8 +142,9 @@ void led_write2dcol(int dcol, uint16_t col1_val, uint16_t col2_val)
 {
 	// first leds in first two columns are switched
 	if (dcol == 0) {
-		col1_val ^= 0x1;
-		col2_val ^= 0x1;
+		uint8_t col1_val_temp = col1_val & 0x01;
+		col1_val = (col1_val & 0xFFFE) | (col2_val & 0x01);
+		col2_val = (col2_val & 0xFFFE) | col1_val_temp;
 	}
 	led_write2dcol_raw(dcol, combine_cols(col1_val, col2_val));
 }
