@@ -1,34 +1,21 @@
 #include "button.h"
 
-#define DEBOUNCE_HIGH_THRES (200)
-#define DEBOUNCE_LOW_THRES  (55)
-#define LONGPRESS_THRES     (50)
+#define DEBOUNCE_HIGH_THRES (200) // 0-255
+#define DEBOUNCE_LOW_THRES  (55)  // 0-255
+#define LONGPRESS_THRES     (25)  // Hz
+#define BUTTON_SCAN_FREQ    (50)  // Hz
 
 #define IS_INRANGE(v, start, stop) ((v) > (start) && (v) < (stop))
 
-static void do_nothing() {}
+static volatile void (*onePressHandler[KEY_INDEX])(void) = { NULL };
+static volatile void (*longPressHandler[KEY_INDEX])(void) = { NULL };
 
-static volatile void (*onePressHandler[KEY_INDEX])(void);
-static volatile void (*longPressHandler[KEY_INDEX])(void);
-
-/**
- * Note: Always call btn_init() before setting up handlers.
- * Otherwise, handlers will be overrided by default (does nothing).
- * 
- */
 void btn_init()
 {
 	GPIOA_ModeCfg(KEY1_PIN, GPIO_ModeIN_PD);
 	GPIOB_ModeCfg(KEY2_PIN, GPIO_ModeIN_PU);
 
-	for (int i=0; i<KEY_INDEX; i++) {
-		onePressHandler[i] = do_nothing;
-	}
-	for (int i=0; i<KEY_INDEX; i++) {
-		longPressHandler[i] = do_nothing;
-	}
-
-	TMR3_TimerInit(FREQ_SYS/100); // 1s/100
+	TMR3_TimerInit(FREQ_SYS/BUTTON_SCAN_FREQ);
 	TMR3_ITCfg(ENABLE, TMR0_3_IT_CYC_END);
 	PFIC_EnableIRQ(TMR3_IRQn);
 }
@@ -45,6 +32,7 @@ void btn_onLongPress(int key, void (*handler)(void))
 	longPressHandler[key] = handler;
 }
 
+__HIGH_CODE
 static int debounce(int key, int is_press)
 {
 	static int y[KEY_INDEX], flag[KEY_INDEX];
@@ -63,41 +51,41 @@ static int debounce(int key, int is_press)
 	return flag[key];
 }
 
+__HIGH_CODE
+static void check(int k)
+{
+	static int hold[KEY_INDEX], is_longpress[KEY_INDEX];
+	if (k >= KEY_INDEX) return; // TODO: assert instead
+
+	if (debounce(k, isPressed(k))) {
+		hold[k]++;
+		if (hold[k] >= LONGPRESS_THRES && is_longpress[k] == 0) {
+			is_longpress[k] = 1;
+			if (longPressHandler[k]) longPressHandler[k]();
+		}
+	} else {
+		if (IS_INRANGE(hold[k], 0, LONGPRESS_THRES)) {
+			if (onePressHandler[k]) onePressHandler[k]();
+		}
+		is_longpress[k] = 0;
+		hold[k] = 0;
+	}
+}
+
+__HIGH_CODE
+static void check_keys()
+{
+	for (int k=0; k<KEY_INDEX; k++) {
+		check(k);
+	}
+}
+
 __INTERRUPT
 __HIGH_CODE
 void TMR3_IRQHandler(void)
 {
-	static int hold[KEY_INDEX], is_longpress[KEY_INDEX];
-
 	if (TMR3_GetITFlag(TMR0_3_IT_CYC_END)) {		
-		if (debounce(KEY1, isPressed(KEY1))) {
-			hold[KEY1]++;
-			if (hold[KEY1] >= LONGPRESS_THRES && is_longpress[KEY1] == 0) {
-				is_longpress[KEY1] = 1;
-				longPressHandler[KEY1]();
-			}
-		} else {
-			if (IS_INRANGE(hold[KEY1], 0, LONGPRESS_THRES)) {
-				onePressHandler[KEY1]();
-			}
-			is_longpress[KEY1] = 0;
-			hold[KEY1] = 0;
-		}
-
-		if (debounce(KEY2, isPressed(KEY2))) {
-			hold[KEY2]++;
-			if (hold[KEY2] >= LONGPRESS_THRES  && is_longpress[KEY2] == 0) {
-				is_longpress[KEY2] = 1;
-				longPressHandler[KEY2]();
-			}
-		} else {
-			if (IS_INRANGE(hold[KEY2], 0, LONGPRESS_THRES)) {
-				onePressHandler[KEY2]();
-			}
-			is_longpress[KEY2] = 0;
-			hold[KEY2] = 0;
-		}
-
+		check_keys();
 		TMR3_ClearITFlag(TMR0_3_IT_CYC_END);
 	}
 }
