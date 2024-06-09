@@ -71,6 +71,57 @@ static void fb_transition()
 	fblist_gonext();
 }
 
+void poweroff()
+{
+	// Stop wasting energy
+	GPIOA_ModeCfg(GPIO_Pin_All, GPIO_ModeIN_Floating);
+	GPIOB_ModeCfg(GPIO_Pin_All, GPIO_ModeIN_Floating);
+
+	// Configure wake-up
+	GPIOA_ModeCfg(KEY1_PIN, GPIO_ModeIN_PD);
+	GPIOA_ITModeCfg(KEY1_PIN, GPIO_ITMode_RiseEdge);
+	PFIC_EnableIRQ(GPIO_A_IRQn);
+	PWR_PeriphWakeUpCfg(ENABLE, RB_SLP_GPIO_WAKE, Long_Delay);
+
+	/* Good bye */
+	LowPower_Shutdown(0);
+}
+
+void handle_mode_transition()
+{
+	static int prev_mode;
+	if (prev_mode == mode) return;
+
+	switch (mode)
+	{
+	case DOWNLOAD:
+		// Disable fb transition while in download mode
+		btn_onOnePress(KEY2, NULL);
+
+		// Take control of the current fb to display 
+		// the Bluetooth animation
+		fb_t *cur = fblist_currentfb();
+		cur->modes = FIXED;
+		cur->scroll = 0;
+		memset(cur->buf, 0, cur->width * sizeof(uint16_t));
+
+		while (mode == DOWNLOAD) {
+			frame_next(&bluetooth, cur->buf, 10, 0);
+			DelayMs(200);
+		}
+		// If not being flashed, pressing KEY1 again will 
+		// make the badge goes off:
+		
+	case POWER_OFF:
+		poweroff();
+		break;
+	
+	default:
+		break;
+	}
+	prev_mode = mode;
+}
+
 void play_splash(xbm_t *xbm, int col, int row)
 {
 	while (scroll_pad_next(xbm, 11, 11, 11, 
@@ -127,6 +178,7 @@ int main()
 			}
 			DelayMs(200);
 		}
+		handle_mode_transition();
     }
 }
 
