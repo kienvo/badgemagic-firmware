@@ -37,7 +37,6 @@ CH5xx_ble_firmware_library/StdPeriphDriver/CH58x_uart0.c \
 CH5xx_ble_firmware_library/StdPeriphDriver/CH58x_timer1.c \
 CH5xx_ble_firmware_library/StdPeriphDriver/CH58x_pwm.c \
 CH5xx_ble_firmware_library/StdPeriphDriver/CH58x_usbhostClass.c \
-CH5xx_ble_firmware_library/StdPeriphDriver/CH58x_usbdev.c \
 CH5xx_ble_firmware_library/StdPeriphDriver/CH58x_adc.c \
 CH5xx_ble_firmware_library/StdPeriphDriver/CH58x_usbhostBase.c \
 CH5xx_ble_firmware_library/StdPeriphDriver/CH58x_timer3.c \
@@ -58,6 +57,10 @@ src/ble/profile/devinfo.c \
 src/ble/setup.c \
 src/ble/peripheral.c \
 src/data.c \
+src/usb/mouse.c \
+src/usb/key.c \
+src/usb/cdc.c \
+src/usb/compound.c \
 
 
 # ASM sources

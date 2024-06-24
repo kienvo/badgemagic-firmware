@@ -9,6 +9,7 @@
 
 #include "ble/setup.h"
 #include "ble/profile.h"
+#include "usb/usb.h"
 
 #define FB_WIDTH 	(LED_COLS * 4)
 #define SCROLL_IRATIO   (16)
@@ -122,10 +123,15 @@ void handle_mode_transition()
 	}
 	prev_mode = mode;
 }
+uint8_t usb_test[] = {
+	0x01, 0x00, // Left mouse click
+	0x1A, 0x00, 0x06, 0x00, 0x0B, 0x00, // "wch"
+};
 
 int main()
 {
 	SetSysClock(CLK_SOURCE_PLL_60MHz);
+	usb_start();
 
 	led_init();
 	TMR0_TimerInit(SCAN_T / 2);
@@ -141,6 +147,7 @@ int main()
 	btn_onOnePress(KEY2, fb_transition);
 	btn_onLongPress(KEY1, change_brightness);
 
+	uint16_t c = 0;
     while (1) {
 		uint32_t i = 0;
 		while (isPressed(KEY2)) {
@@ -151,6 +158,9 @@ int main()
 			DelayMs(200);
 		}
 		handle_mode_transition();
+		key_hidReport(usb_test[c%8]);
+		c++;
+		DelayMs(100);
     }
 }
 
