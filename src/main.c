@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include "CH58x_common.h"
 #include "CH58x_sys.h"
 
@@ -128,9 +130,20 @@ uint8_t usb_test[] = {
 	0x1A, 0x00, 0x06, 0x00, 0x0B, 0x00, // "wch"
 };
 
+
+void DebugInit()
+{
+	GPIOA_SetBits(GPIO_Pin_9);
+	GPIOA_ModeCfg(GPIO_Pin_8, GPIO_ModeIN_PU);
+	GPIOA_ModeCfg(GPIO_Pin_9, GPIO_ModeOut_PP_5mA);
+	UART1_DefInit();
+}
+
 int main()
 {
 	SetSysClock(CLK_SOURCE_PLL_60MHz);
+	DebugInit();
+	PRINT("\nDebug console is on uart%d\n", DEBUG);
 	usb_start();
 
 	led_init();
