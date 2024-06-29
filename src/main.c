@@ -137,6 +137,7 @@ void DebugInit()
 	GPIOA_ModeCfg(GPIO_Pin_8, GPIO_ModeIN_PU);
 	GPIOA_ModeCfg(GPIO_Pin_9, GPIO_ModeOut_PP_5mA);
 	UART1_DefInit();
+	UART1_BaudRateCfg(921600);
 }
 
 int main()

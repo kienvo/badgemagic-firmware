@@ -57,10 +57,14 @@ src/ble/profile/devinfo.c \
 src/ble/setup.c \
 src/ble/peripheral.c \
 src/data.c \
-src/usb/mouse.c \
-src/usb/key.c \
-src/usb/cdc.c \
-src/usb/compound.c \
+src/usb/composite/hid-mouse.c \
+src/usb/composite/hiddev.c \
+src/usb/composite/hid-key.c \
+src/usb/composite/cdc_acm-serial.c \
+src/usb/setup.c \
+src/usb/ctrl.c \
+src/usb/debug.c \
+src/usb/dev.c \
 
 
 # ASM sources

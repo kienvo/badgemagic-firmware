@@ -1,6 +1,6 @@
 #include <stdint.h>
 
-#include "usb.h"
+#include "../usb.h"
 
 __attribute__((aligned(4))) uint8_t ep_buf[64 + 64];      //ep3_out(64)+ep3_in(64)
 #define ep_out      (ep_buf)
@@ -17,5 +17,5 @@ void DevEP3_OUT_Deal(uint8_t l) {
 
 void cdc_init()
 {
-	usb_dma_config(3, ep_out); // TODO: not seem legit from this point of view
+	dma_register(3, ep_out); // TODO: not seem legit from this point of view
 }
