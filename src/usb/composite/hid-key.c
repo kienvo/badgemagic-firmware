@@ -7,7 +7,7 @@
 #include "../debug.h"
 
 #define EP_NUM     (4)
-#define IF_NUM     (0)
+#define IF_NUM     (2)
 
 #if EP_NUM == 4
 extern uint8_t ep0buf[]; // FIXME: only endpoint4 would need this

@@ -6,8 +6,8 @@
 #include "../usb.h"
 #include "../debug.h"
 
-#define EP_NUM   (3)
-#define IF_NUM   (2)
+#define EP_NUM   (2)
+#define IF_NUM   (0)
 
 static __attribute__((aligned(4))) uint8_t ep_buf[64 + 64]; 
 static uint8_t *const ep_out = ep_buf;
@@ -134,12 +134,15 @@ static void if_handler(USB_SETUP_REQ * request)
 
 	case HID_SET_REPORT:
 		PRINT("- HID_SET_REPORT\n");
-		send_handshake(0, 1, ACK, 1, 0);
+		// Enable control register to receive interrupt (expect receiving DATA1 on EP_NUM)
+		send_handshake(EP_NUM, 1, ACK, 0, sizeof(hid_report));
+		// send_handshake(0, 1, ACK, 1, 0);
 		break;
 
 	case HID_SET_IDLE:
 		PRINT("- HID_SET_IDLE\n");
-		send_handshake(0, 1, ACK, 1, 0);
+		send_handshake(EP_NUM, 1, ACK, 1, sizeof(hid_report));
+		// send_handshake(0, 1, ACK, 1, 0);
 		break;
 
 	case HID_SET_PROTOCOL:
@@ -166,6 +169,7 @@ static void ep_handler(USB_SETUP_REQ *request)
 
 	case UIS_TOKEN_IN:
 		// TODO: receving data (read)
+		PRINT("received a interrupt (read request)\n");
 		if (intflag) {
 			intflag = 0;
 			send_handshake(EP_NUM, 1, ACK, 1, sizeof(hid_report));
@@ -193,6 +197,7 @@ void hiddev_init()
 	cfg_desc_append(&if_desc);
 	cfg_desc_append(&hid_desc);
 	cfg_desc_append(&read_ep_desc);
+	cfg_desc_append(&write_ep_desc);
 
 	if_register(IF_NUM, if_handler);
 	ep_register(EP_NUM, ep_handler);

@@ -91,7 +91,10 @@ static void dev_setFeature()
 static void handle_devreq(USB_SETUP_REQ *request)
 {
 	_TRACE();
+
+	// FIXME: for now, multiple configuration is not supported
 	static uint8_t devcfg;
+
 	uint8_t req = request->bRequest;
 	PRINT("bRequest: 0x%02x\n", req);
 
@@ -157,10 +160,15 @@ static void handle_endpoints(USB_SETUP_REQ *request)
 	_TRACE();
 	usb_status_reg_parse(R8_USB_INT_ST);
 
-	//FIXME: why?
-	uint8_t token_mask = R8_USB_INT_ST & (MASK_UIS_TOKEN | MASK_UIS_ENDP);
-	uint8_t ep_num = token_mask & MASK_UIS_ENDP;
 
+	/* Route to each interface */
+	uint8_t recip = request->bRequestType & USB_REQ_RECIP_MASK;
+	if(recip == USB_REQ_RECIP_INTERF) {
+		handle_ifreq(request);
+		return;
+	}
+
+	uint8_t ep_num = R8_USB_INT_ST & MASK_UIS_ENDP;
 	if (ep_num < 8 && ep_handlers[ep_num])
 		ep_handlers[ep_num](request);
 }

@@ -15,8 +15,8 @@ USB_DEV_DESCR dev_desc = {
 
 	.bMaxPacketSize0 = MAX_PACKET_SIZE,
 
-	.idVendor = 0x413d,
-	.idProduct = 0x2107,
+	.idVendor = 0x0416,
+	.idProduct = 0x5020,
 	.bcdDevice = 0x0000,
 	.iManufacturer = 0x00,
 	.iProduct = 0x00,
@@ -35,6 +35,7 @@ USB_DEV_DESCR dev_desc = {
 // 	0x09, 0x07, /* others missing parts will be added on runtime */
 // };
 
+/* Configuration Descriptor template */
 USB_CFG_DESCR cfg_static = {
 	.bLength = sizeof(USB_CFG_DESCR),
 	.bDescriptorType = 0x02,
@@ -155,8 +156,8 @@ void usb_start() {
 	cfg_desc_append(&cfg_static);
 
 	ctrl_init();
-	key_init();
-	mouse_init();
+	// key_init();
+	// mouse_init();
 	hiddev_init();
 
 	init();

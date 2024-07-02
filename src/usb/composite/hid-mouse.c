@@ -6,7 +6,7 @@
 #include "../usb.h"
 #include "../debug.h"
 
-#define EP_NUM   (2)
+#define EP_NUM   (3)
 #define IF_NUM   (1)
 
 static __attribute__((aligned(4))) uint8_t ep_buf[64 + 64]; 

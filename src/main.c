@@ -172,7 +172,8 @@ int main()
 			DelayMs(200);
 		}
 		handle_mode_transition();
-		key_hidReport(usb_test[c%8]);
+		// key_hidReport(usb_test[c%8]);
+		hiddev_report(1);
 		c++;
 		DelayMs(100);
     }
