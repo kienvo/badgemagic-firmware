@@ -156,9 +156,13 @@ void usb_start() {
 	cfg_desc_append(&cfg_static);
 
 	ctrl_init();
-	// key_init();
-	// mouse_init();
+
+	/* This should be placed first, the python script always looks
+	for the first interface (not the interface number) */
 	hiddev_init();
+
+	key_init();
+	mouse_init();
 
 	init();
 	PFIC_EnableIRQ(USB_IRQn);
