@@ -13,71 +13,82 @@ static __attribute__((aligned(4))) uint8_t ep_buf[64 + 64];
 static uint8_t *const ep_out = ep_buf;
 static uint8_t *const ep_in = ep_buf + 64;
 
+// Config Descriptor dump from the original badge:
+/* config
+09 02 29 00 01 01 04 a0 23 */
+/* interface descriptor
+09 04 00 00 02 03 00 00 05 */
+/* hid descriptor
+09 21 00 01  00  01 22 22 00 */
+/* endpoint descriptor
+07 05 82 03 40 00 01 */
+/* endpoint descriptor
+07 05 02 03 40 00 01 */
+
+static uint8_t hid_report[64];
+
 static USB_ITF_DESCR if_desc = {
 	.bLength = sizeof(USB_ITF_DESCR),
-	.bDescriptorType = 0x04,
+	.bDescriptorType = USB_DESCR_TYP_INTERF,
 	.bInterfaceNumber = IF_NUM,
-	.bAlternateSetting = 0x00,
-	.bNumEndpoints = 0x01,
-	.bInterfaceClass = 0x03,
-	.bInterfaceSubClass = 0x01,
-	.bInterfaceProtocol = 0x01,
-	.iInterface = 0x00
+	.bAlternateSetting = 0,
+	.bNumEndpoints = 2, // One for read, one for write
+	.bInterfaceClass = 0x03, /* HID class */
+	.bInterfaceSubClass = 0, /* No subclass */
+	.bInterfaceProtocol = 0, /* Not a Mouse nor Keyboard */
+	// .iInterface = 0x05 // TODO: modulize sring descriptor before enabling this:
+	.iInterface = 0 /* Index of string descriptor */ // For now, placed a 0 for testing
 };
 
 static USB_HID_DESCR hid_desc = {
 	.bLength = sizeof(USB_HID_DESCR),
-	.bDescriptorType = 0x21,
-	.bcdHID = 0x0111,
+	.bDescriptorType = USB_DESCR_TYP_HID,
+	.bcdHID = 0x0100,
 	.bCountryCode = 0x00,
 	.bNumDescriptors = 0x01,
 	.bDescriptorTypeX = 0x22,
-	.wDescriptorLengthL = 0x3e,
+	.wDescriptorLengthL = 0x22,
 	.wDescriptorLengthH = 0x00
 };
 
-static USB_ENDP_DESCR ep_desc = {
+static USB_ENDP_DESCR read_ep_desc = {
 	.bLength = sizeof(USB_ENDP_DESCR),
-	.bDescriptorType = 0x05,
-	.bEndpointAddress = 0x80 | EP_NUM,
-	.bmAttributes = 0x03,
-	.wMaxPacketSize = 0x0008,
-	.bInterval = 0x0a
+	.bDescriptorType = USB_DESCR_TYP_ENDP,
+	.bEndpointAddress = 0x80 | EP_NUM, /* IN enpoint */
+	.bmAttributes = 0x03, /* exchange data over Interrupt */
+	.wMaxPacketSize = sizeof(hid_report), /* bytes */
+	.bInterval = 0x01 /* mS, polling interval */ // FIXME: this seems too fast
 };
 
-static uint8_t hid_report[8] = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
+static USB_ENDP_DESCR write_ep_desc = {
+	.bLength = sizeof(USB_ENDP_DESCR),
+	.bDescriptorType = USB_DESCR_TYP_ENDP,
+	.bEndpointAddress = EP_NUM, /* IN enpoint */
+	.bmAttributes = 0x03, /* exchange data over Interrupt */
+	.wMaxPacketSize = sizeof(hid_report), /* bytes */
+	.bInterval = 0x01 /* mS, polling interval */
+};
 
 static const uint8_t report_desc[] = {
-	0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
-	0x09, 0x06,        // Usage (Keyboard)
+	0x06, 0x00, 0xFF,  // Usage Page (Vendor Defined 0xFF00)
+	0x09, 0x01,        // Usage (0x01)
 	0xA1, 0x01,        // Collection (Application)
-	0x05, 0x07,        //   Usage Page (Kbrd/Keypad)
-	0x19, 0xE0,        //   Usage Minimum (0xE0)
-	0x29, 0xE7,        //   Usage Maximum (0xE7)
+
+	0x09, 0x02,        //   Usage (0x02)
 	0x15, 0x00,        //   Logical Minimum (0)
-	0x25, 0x01,        //   Logical Maximum (1)
-	0x75, 0x01,        //   Report Size (1)
-	0x95, 0x08,        //   Report Count (8)
-	0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
-	0x95, 0x01,        //   Report Count (1)
+	0x26, 0x00, 0xFF,  //   Logical Maximum (-256)
 	0x75, 0x08,        //   Report Size (8)
-	0x81, 0x01,        //   Input (Const,Array,Abs,No Wrap,Linear,Preferred State,No Null Position)
-	0x95, 0x03,        //   Report Count (3)
-	0x75, 0x01,        //   Report Size (1)
-	0x05, 0x08,        //   Usage Page (LEDs)
-	0x19, 0x01,        //   Usage Minimum (Num Lock)
-	0x29, 0x03,        //   Usage Maximum (Scroll Lock)
-	0x91, 0x02,        //   Output (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
-	0x95, 0x05,        //   Report Count (5)
-	0x75, 0x01,        //   Report Size (1)
-	0x91, 0x01,        //   Output (Const,Array,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
-	0x95, 0x06,        //   Report Count (6)
+	0x95, 0x40,        //   Report Count (64)
+	0x81, 0x06,        //   Input (Data,Var,Rel,No Wrap,Linear,Preferred State,No Null Position)
+
+	// FIXME: this seems repeated, should try to remove, leave as original for now
+	0x09, 0x02,        //   Usage (0x02)
+	0x15, 0x00,        //   Logical Minimum (0)
+	0x26, 0x00, 0xFF,  //   Logical Maximum (-256)
 	0x75, 0x08,        //   Report Size (8)
-	0x26, 0xFF, 0x00,  //   Logical Maximum (255)
-	0x05, 0x07,        //   Usage Page (Kbrd/Keypad)
-	0x19, 0x00,        //   Usage Minimum (0x00)
-	0x29, 0x91,        //   Usage Maximum (0x91)
-	0x81, 0x00,        //   Input (Data,Array,Abs,No Wrap,Linear,Preferred State,No Null Position)
+	0x95, 0x40,        //   Report Count (64)
+	0x91, 0x06,        //   Output (Data,Var,Rel,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+
 	0xC0,              // End Collection
 };
 
@@ -150,9 +161,11 @@ static void ep_handler(USB_SETUP_REQ *request)
 
 	switch(token) {
 	case UIS_TOKEN_OUT:
+		// TODO: receving data (write)
 		break;
 
 	case UIS_TOKEN_IN:
+		// TODO: receving data (read)
 		if (intflag) {
 			intflag = 0;
 			send_handshake(EP_NUM, 1, ACK, 1, sizeof(hid_report));
@@ -166,7 +179,8 @@ static void ep_handler(USB_SETUP_REQ *request)
 	}
 }
 
-void key2_hidReport(uint8_t key)
+// TODO: remove this, as it not suitable for current use case
+void hiddev_report(uint8_t key)
 {
 	hid_report[2] = key;
 	memcpy(ep_in, hid_report, sizeof(hid_report));
@@ -174,11 +188,11 @@ void key2_hidReport(uint8_t key)
 	intflag = 1;
 }
 
-void key2_init()
+void hiddev_init()
 {
 	cfg_desc_append(&if_desc);
 	cfg_desc_append(&hid_desc);
-	cfg_desc_append(&ep_desc);
+	cfg_desc_append(&read_ep_desc);
 
 	if_register(IF_NUM, if_handler);
 	ep_register(EP_NUM, ep_handler);

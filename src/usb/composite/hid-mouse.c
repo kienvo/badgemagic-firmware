@@ -36,13 +36,13 @@ static USB_HID_DESCR hid_desc = {
 	.wDescriptorLengthH = 0x00
 };
 
-static USB_ENDP_DESCR ep_desc = {
+static USB_ENDP_DESCR read_ep_desc = {
 	.bLength = sizeof(USB_ENDP_DESCR),
 	.bDescriptorType = 0x05,
 	.bEndpointAddress = 0x80 | EP_NUM,
 	.bmAttributes = 0x03,
 	.wMaxPacketSize = 0x0004,
-	.bInterval = 0x0a
+	.bInterval = 50 // mS, polling interval
 };
 
 static uint8_t hid_report[4] = {0x0, 0x0, 0x0, 0x0};
@@ -151,7 +151,7 @@ void mouse_init()
 {
 	cfg_desc_append(&if_desc);
 	cfg_desc_append(&hid_desc);
-	cfg_desc_append(&ep_desc);
+	cfg_desc_append(&read_ep_desc);
 
 	if_register(IF_NUM, if_handler);
 	ep_register(EP_NUM, ep_handler);

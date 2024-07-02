@@ -83,6 +83,7 @@ int ep_register(int ep_num, ep_handler_t handler)
 	return 0;
 }
 
+// TODO: rename to 'requests_register'
 int if_register(uint8_t if_num, if_handler_t handler)
 {
 	if (if_handlers[if_num]) // already registered
@@ -148,7 +149,7 @@ static void init(void)
 void mouse_init();
 void key_init();
 void ctrl_init();
-void key2_init();
+void hiddev_init();
 
 void usb_start() {
 	cfg_desc_append(&cfg_static);
@@ -156,7 +157,7 @@ void usb_start() {
 	ctrl_init();
 	key_init();
 	mouse_init();
-	key2_init();
+	hiddev_init();
 
 	init();
 	PFIC_EnableIRQ(USB_IRQn);
