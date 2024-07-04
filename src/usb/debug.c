@@ -48,7 +48,7 @@ char *bRequest_parse(uint8_t bReq_val)
 		"SET_INTERFACE",
 		"SYNCH_FRAME",
 	};
-	if (bReq_val > sizeof(meaning))
+	if (bReq_val >= sizeof(meaning))
 		return "N/A";
 	return meaning[bReq_val];
 }
@@ -73,7 +73,7 @@ void print_status_reg()
 	uint8_t toggle = reg & RB_UIS_TOG_OK;
 	uint8_t token = (reg & MASK_UIS_TOKEN) >> 4;
 	uint8_t ep_num = reg & MASK_UIS_ENDP;
-	PRINT("usb: USB Status reg: 0x%02x (%s|%s|%s|EP:%d)\n", reg, 
+	PRINT("usb: Status reg: 0x%02x (%s|%s|%s|EP:%d)\n", reg, 
 				is_setup ? "SETUP" : "0",
 				toggle ? "TOGGLE OK" : "0", token_type[token], ep_num);
 }
@@ -85,19 +85,14 @@ void print_intflag_reg()
 	uint8_t tog_ok = reg & RB_U_TOG_OK;
 	uint8_t sie = reg & RB_U_SIE_FREE;
 	uint8_t overflow = reg & RB_UIF_FIFO_OV;
-	uint8_t sof = reg & RB_UIF_HST_SOF;
 	uint8_t suspend = reg & RB_UIF_SUSPEND;
 	uint8_t xfer_complete = reg & RB_UIF_TRANSFER;
-	uint8_t event_detected = reg & RB_UIF_DETECT;
 	uint8_t bus_reset = reg & RB_UIF_BUS_RST;
-	PRINT("usb: USB Interrupt reg: 0x%02x (%s|%s|%s|%s|%s|%s|%s|%s)\n", reg, 
+	PRINT("usb: Interrupt reg: 0x%02x (%s|%s|%s|%s|%s|%s)\n", reg, 
 				is_nak ? "NAK received" : "0",
 				tog_ok ? "Toggle ok" : "0",
 				sie ? "SIE" : "0",
 				overflow ? "FIFO overflow" : "0",
-				sof ? "SOF" : "0",
 				suspend ? "Suspend" : "0",
-				xfer_complete ? "Xfer completed" : "0",
-				event_detected ? "Host event" : "0",
-				bus_reset ? "Bus reset" : "0");
+				xfer_complete ? "Xfer completed" : "0");
 }

@@ -92,9 +92,6 @@ static void handle_devreq(USB_SETUP_REQ *request)
 {
 	_TRACE();
 
-	// FIXME: for now, multiple configuration is not supported
-	static uint8_t devcfg;
-
 	uint8_t req = request->bRequest;
 	PRINT("bRequest: 0x%02x\n", req);
 
@@ -127,16 +124,6 @@ static void handle_devreq(USB_SETUP_REQ *request)
 	case USB_SET_DESCRIPTOR:
 		PRINT("- USB_SET_DESCRIPTOR\n");
 		// return dev_set_desc();
-		break;
-
-	case USB_GET_CONFIGURATION:
-		PRINT("- USB_GET_CONFIGURATION\n");
-		ctrl_load_short_chunk(&devcfg, 1);
-		break;
-	case USB_SET_CONFIGURATION:
-		PRINT("- USB_SET_CONFIGURATION\n");
-		devcfg = (request->wValue) & 0xff;
-		send_handshake(0, 1, ACK, 1, 0);
 		break;
 
 	default:

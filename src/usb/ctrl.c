@@ -39,35 +39,13 @@ void send_handshake(uint8_t ep_num, int dir, int type, int datax, uint8_t len)
 	if (ep_num > 7)
 		return;
 
-	uint8_t ctrl = 0;
-	if (!dir) { // out
-		if (type == ACK) {
-			ctrl = UEP_R_RES_ACK;
-		} else if (type == NAK) {
-			ctrl = UEP_R_RES_NAK;
-		} else {
-			ctrl = UEP_R_RES_STALL;
-		}
+	uint8_t ctrl = type << (dir ? 0 : 2);
+	ctrl |= (datax) ? RB_UEP_T_TOG : RB_UEP_R_TOG;
 
-		ctrl |= (datax) ? RB_UEP_R_TOG : 0;
-		
-		PRINT("Setting receiving on DATA%d \n", datax != 0);
-	} else { // in
-		if (type == ACK) {
-			ctrl = UEP_T_RES_ACK;
-		} else if (type == NAK) {
-			ctrl = UEP_T_RES_NAK;
-		} else {
-			ctrl = UEP_T_RES_STALL;
-		}
-
-		ctrl |= (datax) ? RB_UEP_T_TOG : 0;
-		
-		char *type_mean[] = { "ACK", "NAK", "STALL"};
-		PRINT("Loaded %d byte, DATA%d with an %s to EP%dIN.\n",
-				len, datax != 0, type_mean[type], ep_num);
-		// FIXME: actually, when sending a respone with NAK or STALL, no length needed
-	}
+	char *type_mean[] = { "ACK", "NAK", "STALL"};
+	PRINT("Loaded %d byte, DATA%d with an %s to EP%dIN.\n",
+			len, datax != 0, type_mean[type], ep_num);
+	// FIXME: actually, when sending a respone with NAK or STALL, no length needed
 
 	res_sent = 1;
 	*len_regs[ep_num] = len;
@@ -137,15 +115,19 @@ static void ep_handler(USB_SETUP_REQ *request)
 	uint8_t token_mask = R8_USB_INT_ST & MASK_UIS_TOKEN;
 	uint8_t req = request->bRequest;
 	uint8_t type = request->wValue >> 8;
-	static uint16_t remain_len, req_len;
+	static uint16_t remain_len, req_len, data_tog;
 
+	// FIXME: for now, multiple configuration is not supported
+	static uint8_t devcfg;
+	
 	PRINT("bRequest: 0x%02x (%s)\n", req, bRequest_parse(req));
 
 	switch(token_mask) {
 	case UIS_TOKEN_IN:
 		if (remain_len) {
 			PRINT("- USB_DESCR_TYP_CONFIG\n");
-			remain_len = ctrl_load_chunk(p_desc, remain_len, req_len, 0);
+			remain_len = ctrl_load_chunk(p_desc, remain_len, req_len, data_tog);
+			data_tog = !data_tog;
 			break;
 		}
 		switch(req) {
@@ -153,6 +135,12 @@ static void ep_handler(USB_SETUP_REQ *request)
 			PRINT("- USB_SET_ADDRESS\n");
 			R8_USB_DEV_AD = request->wValue & 0xff;
 			send_handshake(0, 1, ACK, 1, 0);
+			break;
+		
+		case USB_GET_STATUS:
+			PRINT("- GET_STATUS (interface or endpoint request)\n");
+			uint8_t buf[] = {0, 0};
+			ctrl_load_short_chunk(buf, 2);
 			break;
 
 		default:
@@ -178,6 +166,16 @@ static void ep_handler(USB_SETUP_REQ *request)
 			}
 			break;
 		
+		case USB_GET_CONFIGURATION:
+			PRINT("- USB_GET_CONFIGURATION\n");
+			ctrl_load_short_chunk(&devcfg, 1);
+			break;
+		case USB_SET_CONFIGURATION:
+			PRINT("- USB_SET_CONFIGURATION\n");
+			devcfg = (request->wValue) & 0xff;
+			send_handshake(0, 1, ACK, 1, 0);
+			break;
+
 		default:
 			break;
 		}

@@ -18,8 +18,8 @@ USB_DEV_DESCR dev_desc = {
 	.idVendor = 0x0416,
 	.idProduct = 0x5020,
 	.bcdDevice = 0x0000,
-	.iManufacturer = 0x00,
-	.iProduct = 0x00,
+	.iManufacturer = 1, // TODO: update strings
+	.iProduct = 2,
 	.iSerialNumber = 0x00,
 	.bNumConfigurations = 0x01
 };
@@ -42,7 +42,7 @@ USB_CFG_DESCR cfg_static = {
 	.wTotalLength = sizeof(USB_CFG_DESCR), // will be updated on cfg_desc_add()
 	.bNumInterfaces = 0, // will be updated on cfg_desc_add()
 	.bConfigurationValue = 0x01,
-	.iConfiguration = 0x00,
+	.iConfiguration = 0x00, // TODO: add get_string
 	.bmAttributes = 0xA0,
 	.MaxPower = 50 // mA
 };
@@ -50,9 +50,9 @@ USB_CFG_DESCR cfg_static = {
 uint8_t *cfg_desc; // FIXME:
 
  // FIXME: change to ASCII
-const uint8_t lang_desc[] = {0x04, 0x03, 0x09, 0x04};
-const uint8_t vendor_info[] = {0x0E, 0x03, 'w', 0, 'c', 0, 'h', 0, '.', 0, 'c', 0, 'n', 0};
-const uint8_t product_info[] = {0x0C, 0x03, 'C', 0, 'H', 0, '5', 0, '7', 0, 'x', 0};
+uint8_t lang_desc[] = {0x04, 0x03, 0x09, 0x04};
+uint8_t vendor_info[] = {0x0E, 0x03, 'w', 0, 'c', 0, 'h', 0, '.', 0, 'c', 0, 'n', 0};
+uint8_t product_info[] = {0x0C, 0x03, 'C', 0, 'H', 0, '5', 0, '7', 0, 'x', 0};
 
 if_handler_t if_handlers[256]; // FIXME: here wasting 1KiB of ram
 ep_handler_t ep_handlers[7];

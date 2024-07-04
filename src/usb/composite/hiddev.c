@@ -6,7 +6,7 @@
 #include "../usb.h"
 #include "../debug.h"
 
-#define EP_NUM   (2)
+#define EP_NUM   (1)
 #define IF_NUM   (0)
 
 static __attribute__((aligned(4))) uint8_t ep_buf[64 + 64]; 
@@ -79,15 +79,14 @@ static const uint8_t report_desc[] = {
 	0x26, 0x00, 0xFF,  //   Logical Maximum (-256)
 	0x75, 0x08,        //   Report Size (8)
 	0x95, 0x40,        //   Report Count (64)
-	0x81, 0x06,        //   Input (Data,Var,Rel,No Wrap,Linear,Preferred State,No Null Position)
+	0x81, 0x06,        //   INPUT
 
-	// FIXME: this seems repeated, should try to remove, leave as original for now
 	0x09, 0x02,        //   Usage (0x02)
 	0x15, 0x00,        //   Logical Minimum (0)
 	0x26, 0x00, 0xFF,  //   Logical Maximum (-256)
 	0x75, 0x08,        //   Report Size (8)
 	0x95, 0x40,        //   Report Count (64)
-	0x91, 0x06,        //   Output (Data,Var,Rel,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+	0x91, 0x06,        //   OUTPUT
 
 	0xC0,              // End Collection
 };
@@ -99,11 +98,10 @@ static void if_handler(USB_SETUP_REQ * request)
 	uint8_t req = request->bRequest;
 	uint16_t type = request->wValue >> 8;
 
-	PRINT("bDescriptorType: 0x%02x\n", type);
-
 	switch(req) {
 	case USB_GET_DESCRIPTOR:
 		PRINT("- USB_GET_DESCRIPTOR\n");
+		PRINT("bDescriptorType: 0x%02x\n", type);
 		switch (type)
 		{
 		case USB_DESCR_TYP_REPORT:
@@ -135,14 +133,12 @@ static void if_handler(USB_SETUP_REQ * request)
 	case HID_SET_REPORT:
 		PRINT("- HID_SET_REPORT\n");
 		// Enable control register to receive interrupt (expect receiving DATA1 on EP_NUM)
-		send_handshake(EP_NUM, 1, ACK, 0, sizeof(hid_report));
-		// send_handshake(0, 1, ACK, 1, 0);
+		send_handshake(0, 1, ACK, 1, 0);
 		break;
 
 	case HID_SET_IDLE:
 		PRINT("- HID_SET_IDLE\n");
-		send_handshake(EP_NUM, 1, ACK, 1, sizeof(hid_report));
-		// send_handshake(0, 1, ACK, 1, 0);
+		send_handshake(0, 1, ACK, 1, 0);
 		break;
 
 	case HID_SET_PROTOCOL:

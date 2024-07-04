@@ -7,7 +7,7 @@
 #include "../debug.h"
 
 #define EP_NUM     (4)
-#define IF_NUM     (2)
+#define IF_NUM     (4)
 
 #if EP_NUM == 4
 extern uint8_t ep0buf[]; // FIXME: only endpoint4 would need this
@@ -95,11 +95,10 @@ static void if_handler(USB_SETUP_REQ * request)
 	uint8_t req = request->bRequest;
 	uint16_t type = request->wValue >> 8;
 
-	PRINT("bDescriptorType: 0x%02x\n", type);
-
 	switch(req) {
 	case USB_GET_DESCRIPTOR:
 		PRINT("- USB_GET_DESCRIPTOR\n");
+		PRINT("bDescriptorType: 0x%02x\n", type);
 		switch (type)
 		{
 		case USB_DESCR_TYP_REPORT:
