@@ -5,6 +5,9 @@
 
 #include "../usb.h"
 #include "../debug.h"
+#include "../../data.h"
+#include "../../power.h"
+#include "../../leddrv.h"
 
 #define EP_NUM   (1)
 #define IF_NUM   (0)
@@ -12,18 +15,6 @@
 static __attribute__((aligned(4))) uint8_t ep_buf[64 + 64]; 
 static uint8_t *const ep_out = ep_buf;
 static uint8_t *const ep_in = ep_buf + 64;
-
-// Config Descriptor dump from the original badge:
-/* config
-09 02 29 00 01 01 04 a0 23 */
-/* interface descriptor
-09 04 00 00 02 03 00 00 05 */
-/* hid descriptor
-09 21 00 01  00  01 22 22 00 */
-/* endpoint descriptor
-07 05 82 03 40 00 01 */
-/* endpoint descriptor
-07 05 02 03 40 00 01 */
 
 static uint8_t hid_report[64];
 
@@ -151,16 +142,52 @@ static void if_handler(USB_SETUP_REQ * request)
 	}
 }
 
+static void receive(uint8_t *buf, uint16_t len)
+{
+	_TRACE();
+	static uint16_t c, data_len, n;
+	static uint8_t *data;
+
+	PRINT("dump first 8 bytes: %02x %02x %02x %02x %02x %02x %02x %02x\n",
+				buf[0], buf[1], buf[2], buf[3],
+				buf[4], buf[5], buf[6], buf[7]);
+
+	if (c == 0) {
+		if (memcmp(buf, "wang", 5))
+			return;
+		data = malloc(sizeof(data_legacy_t));
+	}
+
+	memcpy(data + c * len, buf, len);
+
+	if (c == 1) {
+		data_legacy_t *d = (data_legacy_t *)data;
+		n = bigendian16_sum(d->sizes, 8);
+		data_len = LEGACY_HEADER_SIZE + LED_ROWS * n;
+		data = realloc(data, data_len);
+	}
+
+	if (c > 2 && ((c+1) * read_ep_desc.wMaxPacketSize) >= data_len) {
+		data_flatSave(data, data_len);
+		reset_jump();
+	}
+
+	c++;
+}
+
 static int intflag;
 
 static void ep_handler(USB_SETUP_REQ *request)
 {
 	_TRACE();
+	static int tog;
 	uint8_t token = R8_USB_INT_ST & MASK_UIS_TOKEN;
 
 	switch(token) {
 	case UIS_TOKEN_OUT:
-		// TODO: receving data (write)
+		receive(ep_out, read_ep_desc.wMaxPacketSize);
+		send_handshake(EP_NUM, 1, ACK, tog, 0);
+		tog = !tog;
 		break;
 
 	case UIS_TOKEN_IN:
