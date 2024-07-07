@@ -161,7 +161,8 @@ int main()
 	btn_onOnePress(KEY2, fb_transition);
 	btn_onLongPress(KEY1, change_brightness);
 
-	uint16_t c = 0;
+	uint16_t c = 0, j = 0;
+	char s[10];
     while (1) {
 		uint32_t i = 0;
 		while (isPressed(KEY2)) {
@@ -174,8 +175,10 @@ int main()
 		handle_mode_transition();
 		// key_hidReport(usb_test[c%8]);
 		// hiddev_report(1);
+		sprintf(s, "abc %d\n", j++);
+		cdc_acm_tx(s, strlen(s));
 		c++;
-		DelayMs(100);
+		DelayMs(200);
     }
 }
 

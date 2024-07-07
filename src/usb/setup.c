@@ -151,6 +151,7 @@ void mouse_init();
 void key_init();
 void ctrl_init();
 void hiddev_init();
+void cdc_acm_init();
 
 void usb_start() {
 	cfg_desc_append(&cfg_static);
@@ -161,8 +162,9 @@ void usb_start() {
 	for the first interface (not the interface number) */
 	hiddev_init();
 
+	cdc_acm_init();
 	key_init();
-	mouse_init();
+	// mouse_init();
 
 	init();
 	PFIC_EnableIRQ(USB_IRQn);

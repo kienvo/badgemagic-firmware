@@ -1,21 +1,197 @@
 #include <stdint.h>
+#include <memory.h>
+
+#include "CH58x_common.h"
 
 #include "../usb.h"
+#include "../debug.h"
 
-__attribute__((aligned(4))) uint8_t ep_buf[64 + 64];      //ep3_out(64)+ep3_in(64)
-#define ep_out      (ep_buf)
-#define ep_in       (ep_buf + 64)
+#define NOTI_EP_NUM   (2)
+#define DATA_EP_NUM   (3)
+#define ACM_IF_NUM    (1)
+#define DATA_IF_NUM   (2)
 
-void DevEP3_OUT_Deal(uint8_t l) {
-	uint8_t i;
-	for(i = 0; i < l; i++) {
-		ep_in[i] = ~ep_out
-	[i];
+#define USB_DESCTYPE_CS_INTERFACE 0x24
+
+static __attribute__((aligned(4))) uint8_t noti_ep_buf[64 + 64]; 
+static uint8_t *const noti_ep_out = noti_ep_buf;
+static uint8_t *const noti_ep_in = noti_ep_buf + 64;
+
+static __attribute__((aligned(4))) uint8_t data_ep_buf[64 + 64]; 
+static uint8_t *const data_ep_out = data_ep_buf;
+static uint8_t *const data_ep_in = data_ep_buf + 64;
+
+/* CDC Communication interface */
+static USB_ITF_DESCR acm_if_desc = {
+	.bLength = sizeof(USB_ITF_DESCR),
+	.bDescriptorType = USB_DESCR_TYP_INTERF,
+	.bInterfaceNumber = ACM_IF_NUM,
+	.bAlternateSetting = 0,
+	.bNumEndpoints = 3, // Only a Notification Endpoint
+
+	.bInterfaceClass = 0x02, /* Communications and CDC Control */
+	.bInterfaceSubClass = 2, /* ACM subclass */
+	.bInterfaceProtocol = 1, /* AT Command V.250 protocol */
+
+	// .iInterface = 0x05 // TODO: modulize sring descriptor before enabling this:
+	.iInterface = 0 /* No string descriptor */
+};
+
+/* Header Functional descriptor */
+static uint8_t header_func_desc[] = {
+	5,                          /* bLength */
+	USB_DESCTYPE_CS_INTERFACE,  /* bDescriptortype */
+	0x00,       /* bDescriptorsubtype, HEADER */
+	0x10, 0x01, /* bcdCDC */
+};
+
+/* ACM Functional descriptor */
+static uint8_t acm_func_desc[] = {
+	4,                          /* bLength */
+	USB_DESCTYPE_CS_INTERFACE,  /* bDescriptortype */
+	0x02,    /* bDescriptorsubtype, ABSTRACT CONTROL MANAGEMENT */
+	0x02,    /* bmCapabilities: Supports subset of ACM commands */
+};
+
+/* Call Management Functional descriptor */
+static uint8_t callmgr_func_desc[] = {
+	4,                          /* bLength */
+	USB_DESCTYPE_CS_INTERFACE,  /* bDescriptortype */
+	0x01,    /* bDescriptorsubtype, CALL MANAGEMENT */
+	0x03,    /* bmCapabilities, DIY */
+};
+
+/* Notification Endpoint descriptor */
+static USB_ENDP_DESCR noti_ep_desc = {
+	.bLength = sizeof(USB_ENDP_DESCR),
+	.bDescriptorType = USB_DESCR_TYP_ENDP,
+	.bEndpointAddress = 0x80 | NOTI_EP_NUM, /* IN enpoint */
+	.bmAttributes = 0x03,       /* Interrupt transfer */
+	.wMaxPacketSize = 64,       /* bytes */
+	.bInterval = 0xff
+};
+
+/* Data TX Endpoint descriptor */
+static USB_ENDP_DESCR tx_ep_desc = {
+	.bLength = sizeof(USB_ENDP_DESCR),
+	.bDescriptorType = USB_DESCR_TYP_ENDP,
+	.bEndpointAddress = 0x80 | DATA_EP_NUM, /* IN enpoint */
+	.bmAttributes = 0x02,       /* Bulk */
+	.wMaxPacketSize = 64,       /* bytes */
+	.bInterval = 0xff
+};
+
+/* Data RX Endpoint descriptor */
+static USB_ENDP_DESCR rx_ep_desc = {
+	.bLength = sizeof(USB_ENDP_DESCR),
+	.bDescriptorType = USB_DESCR_TYP_ENDP,
+	.bEndpointAddress = DATA_EP_NUM, /* OUT enpoint */
+	.bmAttributes = 0x02,       /* Bulk */
+	.wMaxPacketSize = 64,       /* bytes */
+	.bInterval = 0xff
+};
+
+static void acm_if_handler(USB_SETUP_REQ * request)
+{
+	_TRACE();
+	static uint8_t report_val, idle_val;
+	uint8_t req = request->bRequest;
+	uint16_t type = request->wValue >> 8;
+
+	switch(req) {
+
+	default:
+		break;
 	}
-	usb_res_ack(3, l);
 }
 
-void cdc_init()
+static void data_if_handler(USB_SETUP_REQ * request)
 {
-	dma_register(3, ep_out); // TODO: not seem legit from this point of view
+	_TRACE();
+	static uint8_t report_val, idle_val;
+	uint8_t req = request->bRequest;
+	uint16_t type = request->wValue >> 8;
+
+	switch(req) {
+
+	default:
+		break;
+	}
+}
+
+static void noti_ep_handler(USB_SETUP_REQ *request)
+{
+	_TRACE();
+
+	uint8_t req = request->bRequest;
+	switch(req) {
+	case USB_CLEAR_FEATURE:
+		PRINT("- USB_CLEAR_FEATURE\n");
+		PRINT("wFeatureSelector: 0x%02x\n", request->wValue);
+		if (request->wValue == 0) { // Endpoint halt
+			send_handshake(NOTI_EP_NUM, 1, ACK, 1, 0);
+		}
+		break;
+
+	default:
+		break;
+	}
+}
+
+static int req_len;
+
+static void data_ep_handler(USB_SETUP_REQ *request)
+{
+	_TRACE();
+
+	if (!(R8_USB_INT_ST & RB_UIS_TOG_OK)) {
+		send_handshake(DATA_EP_NUM, 1, STALL, 1, 0);
+		return;
+	}
+
+	uint8_t token = R8_USB_INT_ST & MASK_UIS_TOKEN;
+	switch(token) {
+	case UIS_TOKEN_OUT:
+		
+		break;
+
+	case UIS_TOKEN_IN:
+		if (req_len > 0) { // FIXME: move to multiple transfer, here just testing
+			send_handshake(DATA_EP_NUM, 1, ACK, 1, req_len);
+			req_len = 0;
+		} else {
+			send_handshake(DATA_EP_NUM, 1, NAK, 1, 0);
+		}
+		break;
+	
+	default:
+		break;
+	}
+}
+
+void cdc_acm_tx(uint8_t *buf, uint8_t len)
+{
+	memcpy(data_ep_in, buf, len);
+	send_handshake(DATA_EP_NUM, 1, ACK, 0, 0);
+	req_len = len;
+}
+
+void cdc_acm_init()
+{
+	cfg_desc_append(&acm_if_desc);
+	cfg_desc_append(header_func_desc);
+	cfg_desc_append(acm_func_desc);
+	cfg_desc_append(callmgr_func_desc);
+
+	cfg_desc_append(&noti_ep_desc);
+	cfg_desc_append(&rx_ep_desc);
+	cfg_desc_append(&tx_ep_desc);
+
+	if_register(ACM_IF_NUM, acm_if_handler);
+	if_register(DATA_IF_NUM, data_if_handler);
+	ep_register(NOTI_EP_NUM, noti_ep_handler);
+	ep_register(DATA_EP_NUM, data_ep_handler);
+
+	dma_register(NOTI_EP_NUM, noti_ep_buf);
+	dma_register(DATA_EP_NUM, data_ep_buf);
 }

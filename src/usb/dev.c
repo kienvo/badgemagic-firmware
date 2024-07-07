@@ -27,7 +27,7 @@ static void dev_getDesc(USB_SETUP_REQ *request)
 
 	case USB_DESCR_TYP_CONFIG:
 		PRINT("- USB_DESCR_TYP_CONFIG\n");
-		ctrl_load_short_chunk(cfg_desc, request->wLength);
+		start_send_block(cfg_desc, request->wLength);
 		break;
 
 	case USB_DESCR_TYP_STRING:
@@ -88,9 +88,12 @@ static void dev_setFeature()
 	// DEVICE_REMOTE_WAKEUP and TEST_MODE are not available, ignore.
 }
 
-static void handle_devreq(USB_SETUP_REQ *request)
+void handle_devreq(USB_SETUP_REQ *request)
 {
 	_TRACE();
+
+	// FIXME: for now, multiple configuration is not supported
+	static uint8_t devcfg;
 
 	uint8_t req = request->bRequest;
 	PRINT("bRequest: 0x%02x\n", req);
@@ -114,6 +117,7 @@ static void handle_devreq(USB_SETUP_REQ *request)
 		PRINT("- USB_SET_ADDRESS\n");
 		/* new address will be loadled in the next IN poll,
 		so here just sending a ACK */
+		set_address(request->wValue & 0xff);
 		send_handshake(0, 1, ACK, 1, 0);
 		break;
 
@@ -125,13 +129,23 @@ static void handle_devreq(USB_SETUP_REQ *request)
 		PRINT("- USB_SET_DESCRIPTOR\n");
 		// return dev_set_desc();
 		break;
+	
+	case USB_GET_CONFIGURATION:
+		PRINT("- USB_GET_CONFIGURATION\n");
+		ctrl_load_short_chunk(&devcfg, 1);
+		break;
+	case USB_SET_CONFIGURATION:
+		PRINT("- USB_SET_CONFIGURATION\n");
+		devcfg = (request->wValue) & 0xff;
+		send_handshake(0, 1, ACK, 1, 0);
+		break;
 
 	default:
 		break;
 	}	
 }
 
-static void handle_ifreq(USB_SETUP_REQ *request)
+void handle_ifreq(USB_SETUP_REQ *request)
 {
 	_TRACE();
 
@@ -147,43 +161,9 @@ static void handle_endpoints(USB_SETUP_REQ *request)
 	_TRACE();
 	usb_status_reg_parse(R8_USB_INT_ST);
 
-
-	/* Route to each interface */
-	uint8_t recip = request->bRequestType & USB_REQ_RECIP_MASK;
-	if(recip == USB_REQ_RECIP_INTERF) {
-		handle_ifreq(request);
-		return;
-	}
-
 	uint8_t ep_num = R8_USB_INT_ST & MASK_UIS_ENDP;
 	if (ep_num < 8 && ep_handlers[ep_num])
 		ep_handlers[ep_num](request);
-}
-
-static void handle_setup(USB_SETUP_REQ *request)
-{
-	_TRACE();
-	uint8_t recip = request->bRequestType & USB_REQ_RECIP_MASK;
-
-	// Standard Requests
-	if(recip == USB_REQ_RECIP_DEVICE) {
-		handle_devreq(request);
-	}
-
-	/* Route to each interface */
-	else if(recip == USB_REQ_RECIP_INTERF) {
-		handle_ifreq(request);
-	}
-
-	/* Route to each enpoint */
-	else if(recip == USB_REQ_RECIP_ENDP) {
-		PRINT("recipent %d unhandled\n", recip);
-	}
-	
-	/* Reserved */
-	else {
-		PRINT("recipent %d unhandled\n", recip);
-	}
 }
 
 static void handle_busReset()
@@ -226,14 +206,7 @@ void USB_IRQHandler(void) {
 		USB_SETUP_REQ *req = (USB_SETUP_REQ *)ep0buf;
 		print_setuppk(req);
 
-		if((R8_USB_INT_ST & MASK_UIS_TOKEN) != MASK_UIS_TOKEN) {
-			// Is received PID a TOKEN
-			handle_endpoints(req);
-		}
-		// If received a setup request
-		else if(R8_USB_INT_ST & RB_UIS_SETUP_ACT) {
-			handle_setup(req); // FIXME: this
-		}
+		handle_endpoints(req);
 	}
 	else if(intflag & RB_UIF_BUS_RST) { // Bus reset
 		handle_busReset();

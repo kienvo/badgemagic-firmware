@@ -78,6 +78,8 @@ uint16_t ctrl_load_chunk(void *buf, uint16_t len2load, uint16_t req_len, int dat
 	p_desc += len2load;
 
 	send_handshake(0, 1, ACK, datax, len2load);
+
+	PRINT("remain_len: %d\n", remain_len);
 	return remain_len;
 }
 
@@ -108,77 +110,58 @@ int handshake_sent()
 }
 
 extern uint8_t *cfg_desc;
+static uint8_t address;
+
+void set_address(uint8_t ad)
+{
+	address = ad;
+}
+
+static uint16_t remain_len, req_len, data_tog;
+
+void start_send_block(void *buf, uint16_t len)
+{
+	req_len = len;
+	remain_len = ctrl_load_chunk(cfg_desc, len, len, 1);
+}
+
+static void send_next_chunk()
+{
+	if (remain_len) {
+		remain_len = ctrl_load_chunk(p_desc, remain_len, req_len, data_tog);
+		data_tog = !data_tog;
+	}
+}
 
 static void ep_handler(USB_SETUP_REQ *request)
 {
 	_TRACE();
+	uint8_t recip = request->bRequestType & USB_REQ_RECIP_MASK;
 	uint8_t token_mask = R8_USB_INT_ST & MASK_UIS_TOKEN;
 	uint8_t req = request->bRequest;
 	uint8_t type = request->wValue >> 8;
-	static uint16_t remain_len, req_len, data_tog;
-
-	// FIXME: for now, multiple configuration is not supported
-	static uint8_t devcfg;
+	PRINT("remain_len: %d\n", remain_len);
 	
 	PRINT("bRequest: 0x%02x (%s)\n", req, bRequest_parse(req));
 
-	switch(token_mask) {
-	case UIS_TOKEN_IN:
-		if (remain_len) {
-			PRINT("- USB_DESCR_TYP_CONFIG\n");
-			remain_len = ctrl_load_chunk(p_desc, remain_len, req_len, data_tog);
-			data_tog = !data_tog;
-			break;
-		}
-		switch(req) {
-		case USB_SET_ADDRESS:
-			PRINT("- USB_SET_ADDRESS\n");
-			R8_USB_DEV_AD = request->wValue & 0xff;
-			send_handshake(0, 1, ACK, 1, 0);
-			break;
-		
-		case USB_GET_STATUS:
-			PRINT("- GET_STATUS (interface or endpoint request)\n");
-			uint8_t buf[] = {0, 0};
-			ctrl_load_short_chunk(buf, 2);
-			break;
+	/* Each interface will have their own request handler */
+	if(recip == USB_REQ_RECIP_INTERF) {
+		handle_ifreq(request);
+		return;
+	}
 
-		default:
-			break;
+	switch(token_mask) {
+	case UIS_TOKEN_SETUP:
+	case UIS_TOKEN_OUT:
+		if(recip == USB_REQ_RECIP_DEVICE) {
+			handle_devreq(request);
 		}
+		PRINT("received a setup packet\n");
 		break;
 
-	// TODO: I think token0 out is for request
-	case UIS_TOKEN_OUT:
-		switch (req)
-		{
-		case USB_GET_DESCRIPTOR:
-			switch (type)
-			{
-			case USB_DESCR_TYP_CONFIG:
-				PRINT("- Start sending Config Descriptor\n");
-				req_len = request->wLength;
-				remain_len = ctrl_load_chunk(cfg_desc, req_len, req_len, 1);
-				break;
-
-			default:
-				break;
-			}
-			break;
-		
-		case USB_GET_CONFIGURATION:
-			PRINT("- USB_GET_CONFIGURATION\n");
-			ctrl_load_short_chunk(&devcfg, 1);
-			break;
-		case USB_SET_CONFIGURATION:
-			PRINT("- USB_SET_CONFIGURATION\n");
-			devcfg = (request->wValue) & 0xff;
-			send_handshake(0, 1, ACK, 1, 0);
-			break;
-
-		default:
-			break;
-		}
+	case UIS_TOKEN_IN:
+		R8_USB_DEV_AD = address;
+		send_next_chunk();
 		break;
 	
 	default:
