@@ -24,17 +24,6 @@ USB_DEV_DESCR dev_desc = {
 	.bNumConfigurations = 0x01
 };
 
-// /* Qualifier - only required on High-Speed usb described in Device Descriptor */
-// const uint8_t qual_desc[] = {
-// 	0x0A, 0x06, 0x00, 0x02, 0xFF, 0x00, 0xFF, 0x40, 0x01, 0x00
-// };
-
-// /* USB speed mode -
-// only required on High-Speed usb described in Device Descriptor */
-// uint8_t USB_FS_OSC_DESC[sizeof(cfg_desc)] = {
-// 	0x09, 0x07, /* others missing parts will be added on runtime */
-// };
-
 /* Configuration Descriptor template */
 USB_CFG_DESCR cfg_static = {
 	.bLength = sizeof(USB_CFG_DESCR),
@@ -139,11 +128,12 @@ static void init(void)
 				RB_UEP6_RX_EN | RB_UEP6_TX_EN |
 				RB_UEP5_RX_EN | RB_UEP5_TX_EN;
 
-	R8_USB_DEV_AD = 0x00;
-	R8_USB_CTRL = RB_UC_DEV_PU_EN | RB_UC_INT_BUSY | RB_UC_DMA_EN;
 	R16_PIN_ANALOG_IE |= RB_PIN_USB_IE | RB_PIN_USB_DP_PU;
-	R8_USB_INT_FG = 0xFF;
 	R8_UDEV_CTRL = RB_UD_PD_DIS | RB_UD_PORT_EN;
+
+	R8_USB_DEV_AD = 0x00;
+	R8_USB_INT_FG = 0xFF;
+	R8_USB_CTRL = RB_UC_DEV_PU_EN | RB_UC_INT_BUSY | RB_UC_DMA_EN;
 	R8_USB_INT_EN = RB_UIE_SUSPEND | RB_UIE_BUS_RST | RB_UIE_TRANSFER;
 }
 

@@ -50,19 +50,6 @@ static void dev_getDesc(USB_SETUP_REQ *request)
 		}
 		break;
 
-	case USB_DESCR_TYP_QUALIF:
-		PRINT("- USB_DESCR_TYP_QUALIF\n");
-		// FIXME:
-		// ctrl_load_short_chunk(qual_desc, sizeof(qual_desc));
-		break;
-
-	case USB_DESCR_TYP_SPEED:
-		PRINT("- USB_DESCR_TYP_SPEED\n");
-		// FIXME:
-		// memcpy(&USB_FS_OSC_DESC[2], &cfg_desc[2], sizeof(cfg_desc) - 2);
-		// ctrl_load_short_chunk(USB_FS_OSC_DESC, sizeof(USB_FS_OSC_DESC));
-		break;
-
 	default:
 		break;
 	}
@@ -159,9 +146,18 @@ void handle_ifreq(USB_SETUP_REQ *request)
 static void handle_endpoints(USB_SETUP_REQ *request)
 {
 	_TRACE();
+	uint8_t ep_num;
 	usb_status_reg_parse(R8_USB_INT_ST);
 
-	uint8_t ep_num = R8_USB_INT_ST & MASK_UIS_ENDP;
+	ep_num = R8_USB_INT_ST & MASK_UIS_ENDP;
+
+	/* This is a workaround to avoid hanging when returning from the bootloader,
+	The status register received a setup request on EP-2 for unknown reason, 
+	so here routing to EP-0 */
+	uint8_t recip = request->bRequestType & USB_REQ_RECIP_MASK;
+	if(recip == USB_REQ_RECIP_DEVICE)
+		ep_num = 0;
+
 	if (ep_num < 8 && ep_handlers[ep_num])
 		ep_handlers[ep_num](request);
 }
@@ -184,10 +180,10 @@ static void handle_powerChange()
 {
 	_TRACE();
 	if(R8_USB_MIS_ST & RB_UMS_SUSPEND) {
-		;// hang
+		;// suspend
 	}
 	else {
-		;// wake
+		;// resume
 	} 
 }
 
@@ -208,10 +204,10 @@ void USB_IRQHandler(void) {
 
 		handle_endpoints(req);
 	}
-	else if(intflag & RB_UIF_BUS_RST) { // Bus reset
+	else if(intflag & RB_UIF_BUS_RST) {
 		handle_busReset();
 	}
-	else if(intflag & RB_UIF_SUSPEND) { // USB suspend or resume
+	else if(intflag & RB_UIF_SUSPEND) {
 		handle_powerChange();
 	}
 
