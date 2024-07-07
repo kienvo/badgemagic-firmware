@@ -136,28 +136,31 @@ static void send_next_chunk()
 static void ep_handler(USB_SETUP_REQ *request)
 {
 	_TRACE();
-	uint8_t recip = request->bRequestType & USB_REQ_RECIP_MASK;
-	uint8_t token_mask = R8_USB_INT_ST & MASK_UIS_TOKEN;
+
 	uint8_t req = request->bRequest;
-	uint8_t type = request->wValue >> 8;
-	PRINT("remain_len: %d\n", remain_len);
-	
 	PRINT("bRequest: 0x%02x (%s)\n", req, bRequest_parse(req));
 
 	/* Each interface will have their own request handler */
-	if(recip == USB_REQ_RECIP_INTERF) {
+	uint8_t recip = request->bRequestType & USB_REQ_RECIP_MASK;
+	if (recip == USB_REQ_RECIP_INTERF) {
 		handle_ifreq(request);
 		return;
 	}
 
-	switch(token_mask) {
+	uint8_t token = R8_USB_INT_ST & MASK_UIS_TOKEN;
+	switch(token) {
+
 	case UIS_TOKEN_SETUP:
-	case UIS_TOKEN_OUT:
-		if(recip == USB_REQ_RECIP_DEVICE) {
+		if (recip == USB_REQ_RECIP_DEVICE) {
 			handle_devreq(request);
 		}
 		PRINT("received a setup packet\n");
 		break;
+
+	case UIS_TOKEN_OUT:
+		if (req == USB_CLEAR_FEATURE) {
+			send_handshake(0, 1, ACK, 1, 0);
+		}
 
 	case UIS_TOKEN_IN:
 		R8_USB_DEV_AD = address;

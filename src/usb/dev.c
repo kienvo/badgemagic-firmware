@@ -146,17 +146,9 @@ void handle_ifreq(USB_SETUP_REQ *request)
 static void handle_endpoints(USB_SETUP_REQ *request)
 {
 	_TRACE();
-	uint8_t ep_num;
 	usb_status_reg_parse(R8_USB_INT_ST);
 
-	ep_num = R8_USB_INT_ST & MASK_UIS_ENDP;
-
-	/* This is a workaround to avoid hanging when returning from the bootloader,
-	The status register received a setup request on EP-2 for unknown reason, 
-	so here routing to EP-0 */
-	uint8_t recip = request->bRequestType & USB_REQ_RECIP_MASK;
-	if(recip == USB_REQ_RECIP_DEVICE)
-		ep_num = 0;
+	uint8_t ep_num = R8_USB_INT_ST & MASK_UIS_ENDP;
 
 	if (ep_num < 8 && ep_handlers[ep_num])
 		ep_handlers[ep_num](request);
@@ -179,12 +171,12 @@ static void handle_busReset()
 static void handle_powerChange()
 {
 	_TRACE();
-	if(R8_USB_MIS_ST & RB_UMS_SUSPEND) {
+	if (R8_USB_MIS_ST & RB_UMS_SUSPEND) {
 		;// suspend
 	}
 	else {
 		;// resume
-	} 
+	}
 }
 
 __INTERRUPT
@@ -195,7 +187,7 @@ void USB_IRQHandler(void) {
 	PRINT("\nusb: new interrupt\n");
 	print_intflag_reg();
 
-	if(intflag & RB_UIF_TRANSFER) {
+	if (intflag & RB_UIF_TRANSFER) {
 		PRINT("usb: RX Length reg: %d\n", R8_USB_RX_LEN);
 		print_status_reg();
 
@@ -204,10 +196,10 @@ void USB_IRQHandler(void) {
 
 		handle_endpoints(req);
 	}
-	else if(intflag & RB_UIF_BUS_RST) {
+	else if (intflag & RB_UIF_BUS_RST) {
 		handle_busReset();
 	}
-	else if(intflag & RB_UIF_SUSPEND) {
+	else if (intflag & RB_UIF_SUSPEND) {
 		handle_powerChange();
 	}
 

@@ -105,20 +105,6 @@ static void acm_if_handler(USB_SETUP_REQ * request)
 	}
 }
 
-static void data_if_handler(USB_SETUP_REQ * request)
-{
-	_TRACE();
-	static uint8_t report_val, idle_val;
-	uint8_t req = request->bRequest;
-	uint16_t type = request->wValue >> 8;
-
-	switch(req) {
-
-	default:
-		break;
-	}
-}
-
 static void noti_ep_handler(USB_SETUP_REQ *request)
 {
 	_TRACE();
@@ -144,23 +130,17 @@ static void data_ep_handler(USB_SETUP_REQ *request)
 {
 	_TRACE();
 
-	if (!(R8_USB_INT_ST & RB_UIS_TOG_OK)) {
-		send_handshake(DATA_EP_NUM, 1, STALL, 1, 0);
-		return;
-	}
-
 	uint8_t token = R8_USB_INT_ST & MASK_UIS_TOKEN;
 	switch(token) {
 	case UIS_TOKEN_OUT:
-		
+		send_handshake(DATA_EP_NUM, 1, NAK, 1, 0);
 		break;
 
 	case UIS_TOKEN_IN:
 		if (req_len > 0) { // FIXME: move to multiple transfer, here just testing
-			send_handshake(DATA_EP_NUM, 1, ACK, 1, req_len);
 			req_len = 0;
 		} else {
-			send_handshake(DATA_EP_NUM, 1, NAK, 1, 0);
+			send_handshake(DATA_EP_NUM, 1, STALL, 1, 0);
 		}
 		break;
 	
@@ -171,8 +151,10 @@ static void data_ep_handler(USB_SETUP_REQ *request)
 
 void cdc_acm_tx(uint8_t *buf, uint8_t len)
 {
+	static int tog;
 	memcpy(data_ep_in, buf, len);
-	send_handshake(DATA_EP_NUM, 1, ACK, 0, 0);
+	send_handshake(DATA_EP_NUM, 1, ACK, tog, len);
+	tog = !tog;
 	req_len = len;
 }
 
@@ -188,7 +170,6 @@ void cdc_acm_init()
 	cfg_desc_append(&tx_ep_desc);
 
 	if_register(ACM_IF_NUM, acm_if_handler);
-	if_register(DATA_IF_NUM, data_if_handler);
 	ep_register(NOTI_EP_NUM, noti_ep_handler);
 	ep_register(DATA_EP_NUM, data_ep_handler);
 

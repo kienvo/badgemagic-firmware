@@ -60,7 +60,7 @@ src/data.c \
 src/usb/composite/hid-mouse.c \
 src/usb/composite/hiddev.c \
 src/usb/composite/hid-key.c \
-src/usb/composite/cdc_acm-serial.c \
+src/usb/composite/cdc-serial.c \
 src/usb/setup.c \
 src/usb/ctrl.c \
 src/usb/debug.c \
