@@ -142,37 +142,39 @@ static void if_handler(USB_SETUP_REQ * request)
 	}
 }
 
-static void receive(uint8_t *buf, uint16_t len)
+void receive(uint8_t *buf, uint16_t len)
 {
 	_TRACE();
-	static uint16_t c, data_len, n;
+	static uint16_t rx_len, data_len;
 	static uint8_t *data;
 
 	PRINT("dump first 8 bytes: %02x %02x %02x %02x %02x %02x %02x %02x\n",
 				buf[0], buf[1], buf[2], buf[3],
 				buf[4], buf[5], buf[6], buf[7]);
 
-	if (c == 0) {
+	if (rx_len == 0) {
 		if (memcmp(buf, "wang", 5))
 			return;
-		data = malloc(sizeof(data_legacy_t));
+
+		size_t init_len = len > LEGACY_HEADER_SIZE ? len :
+				sizeof(data_legacy_t) + write_ep_desc.wMaxPacketSize;
+		data = malloc(init_len);
 	}
 
-	memcpy(data + c * len, buf, len);
+	memcpy(data + rx_len, buf, len);
+	rx_len += len;
 
-	if (c == 1) {
+	if (!data_len) {
 		data_legacy_t *d = (data_legacy_t *)data;
-		n = bigendian16_sum(d->sizes, 8);
+		uint16_t n = bigendian16_sum(d->sizes, 8);
 		data_len = LEGACY_HEADER_SIZE + LED_ROWS * n;
 		data = realloc(data, data_len);
 	}
 
-	if (c > 2 && ((c+1) * read_ep_desc.wMaxPacketSize) >= data_len) {
+	if ((rx_len > LEGACY_HEADER_SIZE) && rx_len >= data_len) {
 		data_flatSave(data, data_len);
 		reset_jump();
 	}
-
-	c++;
 }
 
 static int intflag;

@@ -29,7 +29,7 @@ static bStatus_t receive(uint8_t *val, uint16_t len)
 		if (memcmp(val, "wang\0\0", 6)) {
 			return ATT_ERR_INVALID_VALUE;
 		} else {
-			data = malloc(sizeof(data_legacy_t));
+			data = malloc(sizeof(data_legacy_t) + LEGACY_TRANSFER_WIDTH);
 		}
 	}
 

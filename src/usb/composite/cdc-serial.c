@@ -129,11 +129,14 @@ static int req_len;
 static void data_ep_handler(USB_SETUP_REQ *request)
 {
 	_TRACE();
+	static int tog;
 
 	uint8_t token = R8_USB_INT_ST & MASK_UIS_TOKEN;
 	switch(token) {
 	case UIS_TOKEN_OUT:
-		send_handshake(DATA_EP_NUM, 1, NAK, 1, 0);
+		receive(data_ep_out, R8_USB_RX_LEN);
+		tog = !tog;
+		send_handshake(DATA_EP_NUM, 1, ACK, tog, 0);
 		break;
 
 	case UIS_TOKEN_IN:
