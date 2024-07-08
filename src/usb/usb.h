@@ -29,4 +29,13 @@ void cfg_desc_append(void *desc);
 void usb_start();
 void key_hidReport(uint8_t key);
 
+void cdc_acm_tx(uint8_t *buf, uint8_t len);
+void cdc_onWrite(void (*cb)(uint8_t *buf, uint16_t len));
+void hiddev_onWrite(void (*cb)(uint8_t *buf, uint16_t len));
+
+void set_address(uint8_t ad);
+void handle_ifreq(USB_SETUP_REQ *request);
+void handle_devreq(USB_SETUP_REQ *request);
+void start_send_block(void *buf, uint16_t len);
+
 #endif /* __USB_H__ */

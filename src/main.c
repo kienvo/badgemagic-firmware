@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "CH58x_common.h"
+#include "CH58xBLE_LIB.h"
 #include "CH58x_sys.h"
 
 #include "leddrv.h"
@@ -52,7 +53,7 @@ static void fb_transition()
 	fblist_gonext();
 }
 
-void draw_testfb()
+static void draw_testfb()
 {
 
 	fb_t *curr_fb = fblist_currentfb();
@@ -85,7 +86,7 @@ void poweroff()
 	LowPower_Shutdown(0);
 }
 
-void ble_start()
+static void ble_start()
 {
 	ble_hardwareInit();
 	tmos_clockInit();
@@ -95,7 +96,41 @@ void ble_start()
 	legacy_registerService();
 }
 
-void handle_mode_transition()
+static void usb_receive(uint8_t *buf, uint16_t len)
+{
+	static uint16_t rx_len, data_len;
+	static uint8_t *data;
+
+	PRINT("dump first 8 bytes: %02x %02x %02x %02x %02x %02x %02x %02x\n",
+				buf[0], buf[1], buf[2], buf[3],
+				buf[4], buf[5], buf[6], buf[7]);
+
+	if (rx_len == 0) {
+		if (memcmp(buf, "wang", 5))
+			return;
+
+		int init_len = len > LEGACY_HEADER_SIZE ? len : sizeof(data_legacy_t);
+		init_len += MAX_PACKET_SIZE;
+		data = malloc(init_len);
+	}
+
+	memcpy(data + rx_len, buf, len);
+	rx_len += len;
+
+	if (!data_len) {
+		data_legacy_t *d = (data_legacy_t *)data;
+		uint16_t n = bigendian16_sum(d->sizes, 8);
+		data_len = LEGACY_HEADER_SIZE + LED_ROWS * n;
+		data = realloc(data, data_len);
+	}
+
+	if ((rx_len > LEGACY_HEADER_SIZE) && rx_len >= data_len) {
+		data_flatSave(data, data_len);
+		reset_jump();
+	}
+}
+
+static void handle_mode_transition()
 {
 	static int prev_mode;
 	if (prev_mode == mode) return;
@@ -125,13 +160,13 @@ void handle_mode_transition()
 	}
 	prev_mode = mode;
 }
-uint8_t usb_test[] = {
+static uint8_t usb_test[] = {
 	0x01, 0x00, // Left mouse click
 	0x1A, 0x00, 0x06, 0x00, 0x0B, 0x00, // "wch"
 };
 
 
-void DebugInit()
+static void DebugInit()
 {
 	GPIOA_SetBits(GPIO_Pin_9);
 	GPIOA_ModeCfg(GPIO_Pin_8, GPIO_ModeIN_PU);
@@ -143,8 +178,12 @@ void DebugInit()
 int main()
 {
 	SetSysClock(CLK_SOURCE_PLL_60MHz);
+
 	DebugInit();
 	PRINT("\nDebug console is on uart%d\n", DEBUG);
+
+	cdc_onWrite(usb_receive);
+	hiddev_onWrite(usb_receive);
 	usb_start();
 
 	led_init();

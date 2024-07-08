@@ -17,6 +17,7 @@ static uint8_t *const ep_out = ep_buf;
 static uint8_t *const ep_in = ep_buf + 64;
 
 static uint8_t hid_report[64];
+static void (*on_write)(uint8_t *buf, uint16_t len);
 
 static USB_ITF_DESCR if_desc = {
 	.bLength = sizeof(USB_ITF_DESCR),
@@ -142,41 +143,6 @@ static void if_handler(USB_SETUP_REQ * request)
 	}
 }
 
-void receive(uint8_t *buf, uint16_t len)
-{
-	_TRACE();
-	static uint16_t rx_len, data_len;
-	static uint8_t *data;
-
-	PRINT("dump first 8 bytes: %02x %02x %02x %02x %02x %02x %02x %02x\n",
-				buf[0], buf[1], buf[2], buf[3],
-				buf[4], buf[5], buf[6], buf[7]);
-
-	if (rx_len == 0) {
-		if (memcmp(buf, "wang", 5))
-			return;
-
-		size_t init_len = len > LEGACY_HEADER_SIZE ? len :
-				sizeof(data_legacy_t) + write_ep_desc.wMaxPacketSize;
-		data = malloc(init_len);
-	}
-
-	memcpy(data + rx_len, buf, len);
-	rx_len += len;
-
-	if (!data_len) {
-		data_legacy_t *d = (data_legacy_t *)data;
-		uint16_t n = bigendian16_sum(d->sizes, 8);
-		data_len = LEGACY_HEADER_SIZE + LED_ROWS * n;
-		data = realloc(data, data_len);
-	}
-
-	if ((rx_len > LEGACY_HEADER_SIZE) && rx_len >= data_len) {
-		data_flatSave(data, data_len);
-		reset_jump();
-	}
-}
-
 static int intflag;
 
 static void ep_handler(USB_SETUP_REQ *request)
@@ -187,7 +153,8 @@ static void ep_handler(USB_SETUP_REQ *request)
 
 	switch(token) {
 	case UIS_TOKEN_OUT:
-		receive(ep_out, read_ep_desc.wMaxPacketSize);
+		if (on_write)
+			on_write(ep_out, R8_USB_RX_LEN);
 		send_handshake(EP_NUM, 1, ACK, tog, 0);
 		tog = !tog;
 		break;
@@ -215,6 +182,11 @@ void hiddev_report(uint8_t key)
 	memcpy(ep_in, hid_report, sizeof(hid_report));
 	send_handshake(EP_NUM, 1, ACK, 0, sizeof(hid_report));
 	intflag = 1;
+}
+
+void hiddev_onWrite(void (*cb)(uint8_t *buf, uint16_t len))
+{
+	on_write = cb;
 }
 
 void hiddev_init()

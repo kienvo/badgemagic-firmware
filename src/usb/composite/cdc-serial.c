@@ -21,6 +21,8 @@ static __attribute__((aligned(4))) uint8_t data_ep_buf[64 + 64];
 static uint8_t *const data_ep_out = data_ep_buf;
 static uint8_t *const data_ep_in = data_ep_buf + 64;
 
+static void (*on_write)(uint8_t *buf, uint16_t len);
+
 /* CDC Communication interface */
 static USB_ITF_DESCR acm_if_desc = {
 	.bLength = sizeof(USB_ITF_DESCR),
@@ -134,7 +136,8 @@ static void data_ep_handler(USB_SETUP_REQ *request)
 	uint8_t token = R8_USB_INT_ST & MASK_UIS_TOKEN;
 	switch(token) {
 	case UIS_TOKEN_OUT:
-		receive(data_ep_out, R8_USB_RX_LEN);
+		if (on_write)
+			on_write(data_ep_out, R8_USB_RX_LEN);
 		tog = !tog;
 		send_handshake(DATA_EP_NUM, 1, ACK, tog, 0);
 		break;
@@ -159,6 +162,11 @@ void cdc_acm_tx(uint8_t *buf, uint8_t len)
 	send_handshake(DATA_EP_NUM, 1, ACK, tog, len);
 	tog = !tog;
 	req_len = len;
+}
+
+void cdc_onWrite(void (*cb)(uint8_t *buf, uint16_t len))
+{
+	on_write = cb;
 }
 
 void cdc_acm_init()
