@@ -80,7 +80,7 @@ void poweroff()
 	GPIOA_ModeCfg(KEY1_PIN, GPIO_ModeIN_PD);
 	GPIOA_ITModeCfg(KEY1_PIN, GPIO_ITMode_RiseEdge);
 	PFIC_EnableIRQ(GPIO_A_IRQn);
-	PWR_PeriphWakeUpCfg(ENABLE, RB_SLP_GPIO_WAKE, Long_Delay);
+	PWR_PeriphWakeUpCfg(ENABLE, RB_SLP_GPIO_WAKE | RB_SLP_USB_WAKE, Long_Delay);
 
 	/* Good bye */
 	LowPower_Shutdown(0);
@@ -126,7 +126,7 @@ static void usb_receive(uint8_t *buf, uint16_t len)
 
 	if ((rx_len > LEGACY_HEADER_SIZE) && rx_len >= data_len) {
 		data_flatSave(data, data_len);
-		reset_jump();
+		// reset_jump();
 	}
 }
 
@@ -160,11 +160,6 @@ static void handle_mode_transition()
 	}
 	prev_mode = mode;
 }
-static uint8_t usb_test[] = {
-	0x01, 0x00, // Left mouse click
-	0x1A, 0x00, 0x06, 0x00, 0x0B, 0x00, // "wch"
-};
-
 
 static void DebugInit()
 {
@@ -200,7 +195,7 @@ int main()
 	btn_onOnePress(KEY2, fb_transition);
 	btn_onLongPress(KEY1, change_brightness);
 
-	uint16_t c = 0, j = 0;
+	uint16_t j = 0;
 	char s[10];
     while (1) {
 		uint32_t i = 0;
@@ -212,11 +207,9 @@ int main()
 			DelayMs(200);
 		}
 		handle_mode_transition();
-		// key_hidReport(usb_test[c%8]);
-		// hiddev_report(1);
+
 		sprintf(s, "abc %d\n", j++);
 		cdc_acm_tx(s, strlen(s));
-		c++;
 		DelayMs(200);
     }
 }

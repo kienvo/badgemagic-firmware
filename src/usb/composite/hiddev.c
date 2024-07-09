@@ -24,7 +24,7 @@ static USB_ITF_DESCR if_desc = {
 	.bDescriptorType = USB_DESCR_TYP_INTERF,
 	.bInterfaceNumber = IF_NUM,
 	.bAlternateSetting = 0,
-	.bNumEndpoints = 2, // One for read, one for write
+	.bNumEndpoints = 2, /* One for read, one for write */
 	.bInterfaceClass = 0x03, /* HID class */
 	.bInterfaceSubClass = 0, /* No subclass */
 	.bInterfaceProtocol = 0, /* Not a Mouse nor Keyboard */
@@ -49,7 +49,7 @@ static USB_ENDP_DESCR read_ep_desc = {
 	.bEndpointAddress = 0x80 | EP_NUM, /* IN enpoint */
 	.bmAttributes = 0x03, /* exchange data over Interrupt */
 	.wMaxPacketSize = sizeof(hid_report), /* bytes */
-	.bInterval = 0x01 /* mS, polling interval */ // FIXME: this seems too fast
+	.bInterval = 0xff /* polling interval */
 };
 
 static USB_ENDP_DESCR write_ep_desc = {
@@ -58,7 +58,7 @@ static USB_ENDP_DESCR write_ep_desc = {
 	.bEndpointAddress = EP_NUM, /* IN enpoint */
 	.bmAttributes = 0x03, /* exchange data over Interrupt */
 	.wMaxPacketSize = sizeof(hid_report), /* bytes */
-	.bInterval = 0x01 /* mS, polling interval */
+	.bInterval = 0xff /* polling interval */
 };
 
 static const uint8_t report_desc[] = {
@@ -66,6 +66,7 @@ static const uint8_t report_desc[] = {
 	0x09, 0x01,        // Usage (0x01)
 	0xA1, 0x01,        // Collection (Application)
 
+	/* IN */
 	0x09, 0x02,        //   Usage (0x02)
 	0x15, 0x00,        //   Logical Minimum (0)
 	0x26, 0x00, 0xFF,  //   Logical Maximum (-256)
@@ -73,6 +74,7 @@ static const uint8_t report_desc[] = {
 	0x95, 0x40,        //   Report Count (64)
 	0x81, 0x06,        //   INPUT
 
+	/* OUT */
 	0x09, 0x02,        //   Usage (0x02)
 	0x15, 0x00,        //   Logical Minimum (0)
 	0x26, 0x00, 0xFF,  //   Logical Maximum (-256)

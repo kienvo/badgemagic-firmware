@@ -137,8 +137,6 @@ static void init(void)
 	R8_USB_INT_EN = RB_UIE_SUSPEND | RB_UIE_BUS_RST | RB_UIE_TRANSFER;
 }
 
-void mouse_init();
-void key_init();
 void ctrl_init();
 void hiddev_init();
 void cdc_acm_init();
@@ -153,8 +151,6 @@ void usb_start() {
 	hiddev_init();
 
 	cdc_acm_init();
-	key_init();
-	// mouse_init();
 
 	init();
 	PFIC_EnableIRQ(USB_IRQn);
