@@ -70,6 +70,11 @@ static void draw_testfb()
 	fblist_drop(curr_fb);
 }
 
+void sysreset()
+{
+	PFIC->SCTLR |= (1 << 31);
+}
+
 void poweroff()
 {
 	// Stop wasting energy
@@ -80,7 +85,7 @@ void poweroff()
 	GPIOA_ModeCfg(KEY1_PIN, GPIO_ModeIN_PD);
 	GPIOA_ITModeCfg(KEY1_PIN, GPIO_ITMode_RiseEdge);
 	PFIC_EnableIRQ(GPIO_A_IRQn);
-	PWR_PeriphWakeUpCfg(ENABLE, RB_SLP_GPIO_WAKE | RB_SLP_USB_WAKE, Long_Delay);
+	PWR_PeriphWakeUpCfg(ENABLE, RB_SLP_GPIO_WAKE, Long_Delay);
 
 	/* Good bye */
 	LowPower_Shutdown(0);
@@ -126,7 +131,7 @@ static void usb_receive(uint8_t *buf, uint16_t len)
 
 	if ((rx_len > LEGACY_HEADER_SIZE) && rx_len >= data_len) {
 		data_flatSave(data, data_len);
-		// reset_jump();
+		SYS_ResetExecute();
 	}
 }
 

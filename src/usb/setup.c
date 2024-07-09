@@ -54,7 +54,7 @@ void cfg_desc_append(void *desc)
 		cfg_len = ((USB_CFG_DESCR *)cfg_desc)->wTotalLength;
 	uint8_t newlen = cfg_len + len;
 
-	cfg_desc = realloc(cfg_desc, newlen); // TODO: add safe check here
+	cfg_desc = realloc(cfg_desc, newlen); // TODO: add a safe check here
 
 	memcpy(cfg_desc + cfg_len, desc, len);
 

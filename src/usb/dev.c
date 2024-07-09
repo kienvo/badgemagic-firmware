@@ -148,6 +148,13 @@ static void handle_endpoints(USB_SETUP_REQ *request)
 	_TRACE();
 	usb_status_reg_parse(R8_USB_INT_ST);
 
+	/* Workaround for getting a setup packet but EP is 0x02 for unknown reason.
+	This happens when return from the bootloader or after a sotfware reset. */
+	uint8_t token = R8_USB_INT_ST & MASK_UIS_TOKEN;
+	if (token == UIS_TOKEN_SETUP) {
+		ep_handlers[0](request);
+	}
+
 	uint8_t ep_num = R8_USB_INT_ST & MASK_UIS_ENDP;
 
 	if (ep_num < 8 && ep_handlers[ep_num])
