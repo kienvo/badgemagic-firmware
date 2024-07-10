@@ -5,11 +5,44 @@
 
 extern USB_DEV_DESCR dev_desc;
 extern uint8_t *cfg_desc;
-extern ep_handler_t ep_handlers[];
-extern if_handler_t if_handlers[];
-
 extern uint8_t ep0buf[];
-extern uint8_t *string_index[];
+
+/* String Descriptor Zero, Specifying Languages Supported by the Device */
+static uint8_t lang_desc[] = {
+	0x04,       /* bLength */
+	0x03,       /* bDescriptorType */
+	0x09, 0x04  /* wLANGID - en-US */
+};
+
+static uint8_t vendor_info[] = {
+	0x0E, /* bLength */
+	0x03, /* bDescriptorType */
+
+	/* bString */
+	'w', 0, 'c', 0, 'h', 0, '.', 0, 'c', 0, 'n', 0
+};
+
+static uint8_t product_info[] = {
+	0x0C, /* bLength */
+	0x03, /* bDescriptorType */
+
+	/* bString */
+	'C', 0, 'H', 0, '5', 0, '7', 0, 'x', 0
+};
+
+static uint8_t serial_number[] = {
+	106, /* bLength */
+	0x03, /* bDescriptorType */
+
+	/* bString */
+	'T', 0, 'h', 0, 'i', 0, 's', 0, ' ', 0, 'i', 0, 's', 0, ' ', 0, 't', 0, 
+	'h', 0, 'e', 0, ' ', 0, 's', 0, 'e', 0, 'r', 0, 'i', 0, 'a', 0, 'l', 0, 
+	' ', 0, 's', 0, 't', 0, 'r', 0, 'i', 0, 'n', 0, 'g', 0, ' ', 0,
+
+	'T', 0, 'h', 0, 'i', 0, 's', 0, ' ', 0, 'i', 0, 's', 0, ' ', 0, 't', 0, 
+	'h', 0, 'e', 0, ' ', 0, 's', 0, 'e', 0, 'r', 0, 'i', 0, 'a', 0, 'l', 0, 
+	' ', 0, 's', 0, 't', 0, 'r', 0, 'i', 0, 'n', 0, 'g', 0, ' ', 0
+};
 
 static void desc_dev(USB_SETUP_REQ *request)
 {
@@ -23,10 +56,15 @@ static void desc_config(USB_SETUP_REQ *request)
 
 static void desc_string(USB_SETUP_REQ *request)
 {
+	uint8_t *string_index[32] = {
+		lang_desc,
+		vendor_info,
+		product_info,
+		serial_number
+	};
 	uint8_t index = request->wValue & 0xff;
-	if (index > 4)
-		return;
-	start_send_block(string_index[index], string_index[index][0]);
+	if (index <= sizeof(string_index))
+		start_send_block(string_index[index], string_index[index][0]);
 }
 
 static void dev_getDesc(USB_SETUP_REQ *request)
@@ -116,88 +154,4 @@ void handle_devreq(USB_SETUP_REQ *request)
 
 	if (req <= 12 && dev_req_handlers[req])
 		dev_req_handlers[req](request);
-}
-
-void handle_ifreq(USB_SETUP_REQ *request)
-{
-	_TRACE();
-
-	uint8_t ifn = request->wIndex & 0xff;
-	PRINT("wInterfaceNumber: 0x%02x\n", ifn);
-
-	if (if_handlers[ifn])
-		if_handlers[ifn](request);
-}
-
-static void handle_endpoints(USB_SETUP_REQ *request)
-{
-	_TRACE();
-	usb_status_reg_parse(R8_USB_INT_ST);
-
-	/* Workaround for getting a setup packet but EP is 0x02 for unknown reason.
-	This happens when return from the bootloader or after a sotfware reset. */
-	uint8_t token = R8_USB_INT_ST & MASK_UIS_TOKEN;
-	if (token == UIS_TOKEN_SETUP) {
-		ep_handlers[0](request);
-	}
-
-	uint8_t ep_num = R8_USB_INT_ST & MASK_UIS_ENDP;
-
-	if (ep_num < 8 && ep_handlers[ep_num])
-		ep_handlers[ep_num](request);
-}
-
-static void handle_busReset()
-{
-	_TRACE();
-	R8_USB_DEV_AD = 0;
-	R8_UEP0_CTRL = UEP_R_RES_ACK | UEP_T_RES_NAK;
-	R8_UEP1_CTRL = UEP_R_RES_ACK | UEP_T_RES_NAK;
-	R8_UEP2_CTRL = UEP_R_RES_ACK | UEP_T_RES_NAK;
-	R8_UEP3_CTRL = UEP_R_RES_ACK | UEP_T_RES_NAK;
-	R8_UEP4_CTRL = UEP_R_RES_ACK | UEP_T_RES_NAK;
-	R8_UEP5_CTRL = UEP_R_RES_ACK | UEP_T_RES_NAK;
-	R8_UEP6_CTRL = UEP_R_RES_ACK | UEP_T_RES_NAK;
-	R8_UEP7_CTRL = UEP_R_RES_ACK | UEP_T_RES_NAK;
-}
-
-static void handle_powerChange()
-{
-	_TRACE();
-	if (R8_USB_MIS_ST & RB_UMS_SUSPEND) {
-		;// suspend
-	}
-	else {
-		;// resume
-	}
-}
-
-__INTERRUPT
-__HIGH_CODE
-void USB_IRQHandler(void) {
-	uint8_t intflag = R8_USB_INT_FG;
-	clear_handshake_sent_flag();
-	PRINT("\nusb: new interrupt\n");
-	print_intflag_reg();
-
-	if (intflag & RB_UIF_TRANSFER) {
-		PRINT("usb: RX Length reg: %d\n", R8_USB_RX_LEN);
-		print_status_reg();
-
-		USB_SETUP_REQ *req = (USB_SETUP_REQ *)ep0buf;
-		print_setuppk(req);
-
-		handle_endpoints(req);
-	}
-	else if (intflag & RB_UIF_BUS_RST) {
-		handle_busReset();
-	}
-	else if (intflag & RB_UIF_SUSPEND) {
-		handle_powerChange();
-	}
-
-	if (handshake_sent() == 0) {
-		PRINT("WARN: This transaction is being IGNORED!\n");
-	}
-	R8_USB_INT_FG = intflag; // clear interrupt flags
 }

@@ -38,67 +38,6 @@ USB_CFG_DESCR cfg_static = {
 
 uint8_t *cfg_desc; // FIXME:
 
-/* String Descriptor Zero, Specifying Languages Supported by the Device */
-uint8_t lang_desc[] = {
-	0x04,       /* bLength */
-	0x03,       /* bDescriptorType */
-	0x09, 0x04  /* wLANGID - en-US */
-};
-
-uint8_t vendor_info[] = {
-	0x0E, /* bLength */
-	0x03, /* bDescriptorType */
-
-	/* bString */
-	'w', 0, 'c', 0, 'h', 0, '.', 0, 'c', 0, 'n', 0
-};
-
-uint8_t product_info[] = {
-	0x0C, /* bLength */
-	0x03, /* bDescriptorType */
-
-	/* bString */
-	'C', 0, 'H', 0, '5', 0, '7', 0, 'x', 0
-};
-
-uint8_t serial_number[] = {
-	106, /* bLength */
-	0x03, /* bDescriptorType */
-
-	/* bString */
-	'T', 0, 'h', 0, 'i', 0, 's', 0, ' ', 0, 'i', 0, 's', 0, ' ', 0, 't', 0, 
-	'h', 0, 'e', 0, ' ', 0, 's', 0, 'e', 0, 'r', 0, 'i', 0, 'a', 0, 'l', 0, 
-	' ', 0, 's', 0, 't', 0, 'r', 0, 'i', 0, 'n', 0, 'g', 0, ' ', 0,
-
-	'T', 0, 'h', 0, 'i', 0, 's', 0, ' ', 0, 'i', 0, 's', 0, ' ', 0, 't', 0, 
-	'h', 0, 'e', 0, ' ', 0, 's', 0, 'e', 0, 'r', 0, 'i', 0, 'a', 0, 'l', 0, 
-	' ', 0, 's', 0, 't', 0, 'r', 0, 'i', 0, 'n', 0, 'g', 0, ' ', 0
-};
-
-uint8_t hiddev_info[] = {
-	66, /* bLength */
-	0x03, /* bDescriptorType */
-
-	/* bString */
-	'T', 0, 'h', 0, 'i', 0, 's', 0, ' ', 0, 'i', 0, 's', 0, ' ', 0, 't', 0, 
-	'h', 0, 'e', 0, ' ', 0, 'c', 0, 'o', 0, 'n', 0, 'f', 0, 'i', 0, 'g', 0, 
-	'u', 0, 'r', 0, 'a', 0, 't', 0, 'i', 0, 'o', 0, 'n', 0, ' ', 0, 's', 0, 
-	't', 0, 'r', 0, 'i', 0, 'n', 0, 'g', 0
-};
-
-uint8_t cdc_info[] = {
-	66, /* bLength */
-	0x03, /* bDescriptorType */
-
-	/* bString */
-	'T', 0, 'h', 0, 'i', 0, 's', 0, ' ', 0, 'i', 0, 's', 0, ' ', 0, 't', 0, 
-	'h', 0, 'e', 0, ' ', 0, 'c', 0, 'o', 0, 'n', 0, 'f', 0, 'i', 0, 'g', 0, 
-	'u', 0, 'r', 0, 'a', 0, 't', 0, 'i', 0, 'o', 0, 'n', 0, ' ', 0, 's', 0, 
-	't', 0, 'r', 0, 'i', 0, 'n', 0, 'g', 0
-};
-
-uint8_t *string_index[32];
-
 if_handler_t if_handlers[256]; // FIXME: here wasting 1KiB of ram
 ep_handler_t ep_handlers[7];
 
@@ -207,13 +146,6 @@ void usb_start() {
 	hiddev_init();
 
 	cdc_acm_init();
-
-	string_index[0] = lang_desc;
-	string_index[1] = vendor_info;
-	string_index[2] = product_info;
-	string_index[3] = serial_number;
-	string_index[4] = hiddev_info;
-	string_index[5] = cdc_info;
 
 	init();
 	PFIC_EnableIRQ(USB_IRQn);

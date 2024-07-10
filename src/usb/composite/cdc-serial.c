@@ -34,7 +34,6 @@ static USB_ITF_DESCR acm_if_desc = {
 	.bInterfaceSubClass = 2, /* ACM subclass */
 	.bInterfaceProtocol = 1, /* AT Command V.250 protocol */
 
-	// .iInterface = 0x05 // TODO: modulize sring descriptor before enabling this:
 	.iInterface = 0 /* No string descriptor */
 };
 

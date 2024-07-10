@@ -28,7 +28,6 @@ static USB_ITF_DESCR if_desc = {
 	.bInterfaceClass = 0x03, /* HID class */
 	.bInterfaceSubClass = 0, /* No subclass */
 	.bInterfaceProtocol = 0, /* Not a Mouse nor Keyboard */
-	// .iInterface = 0x05 // TODO: modulize sring descriptor before enabling this:
 	.iInterface = 0 /* Index of string descriptor */ // For now, placed a 0 for testing
 };
 
