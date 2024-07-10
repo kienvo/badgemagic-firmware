@@ -21,7 +21,6 @@ void clear_handshake_sent_flag();
 int handshake_sent();
 void send_handshake(uint8_t ep_num, int dir, int type, int toggle, uint8_t len);
 void ctrl_send_nak();
-void ctrl_load_short_chunk(void *buf, uint16_t len);
 
 void ep_send(uint8_t ep_num, uint8_t len);
 

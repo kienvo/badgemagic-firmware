@@ -5,12 +5,10 @@
 
 extern USB_DEV_DESCR dev_desc;
 extern uint8_t *cfg_desc;
-extern const uint8_t lang_desc[];
-extern const uint8_t vendor_info[];
-extern const uint8_t product_info[];
 extern ep_handler_t ep_handlers[];
 extern if_handler_t if_handlers[];
 extern uint8_t ep0buf[];
+extern uint8_t *string_index[];
 
 static void dev_getDesc(USB_SETUP_REQ *request)
 {
@@ -22,7 +20,7 @@ static void dev_getDesc(USB_SETUP_REQ *request)
 	switch(type) {
 	case USB_DESCR_TYP_DEVICE:
 		PRINT("- USB_DESCR_TYP_DEVICE\n");
-		ctrl_load_short_chunk(&dev_desc, dev_desc.bLength);
+		start_send_block(&dev_desc, dev_desc.bLength);
 		break;
 
 	case USB_DESCR_TYP_CONFIG:
@@ -32,22 +30,9 @@ static void dev_getDesc(USB_SETUP_REQ *request)
 
 	case USB_DESCR_TYP_STRING:
 		PRINT("- USB_DESCR_TYP_STRING\n");
-		switch(index) {
-		case 1:
-			PRINT("- 1\n");
-			ctrl_load_short_chunk(vendor_info, vendor_info[0]);
-			break;
-		case 2:
-			PRINT("- 2\n");
-			ctrl_load_short_chunk(product_info, product_info[0]);
-			break;
-		case 0:
-			PRINT("- 0\n");
-			ctrl_load_short_chunk(lang_desc, lang_desc[0]);
-			break;
-		default:
-			break;
-		}
+		if (index > 4)
+			return;
+		start_send_block(string_index[index], string_index[index][0]);
 		break;
 
 	default:
@@ -60,7 +45,7 @@ static void dev_getStatus(USB_SETUP_REQ *request)
 	_TRACE();
 	// Remote Wakeup disabled | Bus powered, hardcoded for now
 	uint8_t buf[] = {0, 0};
-	ctrl_load_short_chunk(buf, request->wLength);
+	start_send_block(buf, 2);
 }
 
 static void dev_clearFeature()
@@ -119,7 +104,7 @@ void handle_devreq(USB_SETUP_REQ *request)
 	
 	case USB_GET_CONFIGURATION:
 		PRINT("- USB_GET_CONFIGURATION\n");
-		ctrl_load_short_chunk(&devcfg, 1);
+		start_send_block(&devcfg, 1);
 		break;
 	case USB_SET_CONFIGURATION:
 		PRINT("- USB_SET_CONFIGURATION\n");

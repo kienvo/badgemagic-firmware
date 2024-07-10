@@ -20,7 +20,7 @@ USB_DEV_DESCR dev_desc = {
 	.bcdDevice = 0x0000,
 	.iManufacturer = 1, // TODO: update strings
 	.iProduct = 2,
-	.iSerialNumber = 0x00,
+	.iSerialNumber = 3,
 	.bNumConfigurations = 0x01
 };
 
@@ -31,17 +31,73 @@ USB_CFG_DESCR cfg_static = {
 	.wTotalLength = sizeof(USB_CFG_DESCR), // will be updated on cfg_desc_add()
 	.bNumInterfaces = 0, // will be updated on cfg_desc_add()
 	.bConfigurationValue = 0x01,
-	.iConfiguration = 0x00, // TODO: add get_string
+	.iConfiguration = 4, // TODO: add get_string
 	.bmAttributes = 0xA0,
 	.MaxPower = 50 // mA
 };
 
 uint8_t *cfg_desc; // FIXME:
 
- // FIXME: change to ASCII
-uint8_t lang_desc[] = {0x04, 0x03, 0x09, 0x04};
-uint8_t vendor_info[] = {0x0E, 0x03, 'w', 0, 'c', 0, 'h', 0, '.', 0, 'c', 0, 'n', 0};
-uint8_t product_info[] = {0x0C, 0x03, 'C', 0, 'H', 0, '5', 0, '7', 0, 'x', 0};
+/* String Descriptor Zero, Specifying Languages Supported by the Device */
+uint8_t lang_desc[] = {
+	0x04,       /* bLength */
+	0x03,       /* bDescriptorType */
+	0x09, 0x04  /* wLANGID - en-US */
+};
+
+uint8_t vendor_info[] = {
+	0x0E, /* bLength */
+	0x03, /* bDescriptorType */
+
+	/* bString */
+	'w', 0, 'c', 0, 'h', 0, '.', 0, 'c', 0, 'n', 0
+};
+
+uint8_t product_info[] = {
+	0x0C, /* bLength */
+	0x03, /* bDescriptorType */
+
+	/* bString */
+	'C', 0, 'H', 0, '5', 0, '7', 0, 'x', 0
+};
+
+uint8_t serial_number[] = {
+	106, /* bLength */
+	0x03, /* bDescriptorType */
+
+	/* bString */
+	'T', 0, 'h', 0, 'i', 0, 's', 0, ' ', 0, 'i', 0, 's', 0, ' ', 0, 't', 0, 
+	'h', 0, 'e', 0, ' ', 0, 's', 0, 'e', 0, 'r', 0, 'i', 0, 'a', 0, 'l', 0, 
+	' ', 0, 's', 0, 't', 0, 'r', 0, 'i', 0, 'n', 0, 'g', 0, ' ', 0,
+
+	'T', 0, 'h', 0, 'i', 0, 's', 0, ' ', 0, 'i', 0, 's', 0, ' ', 0, 't', 0, 
+	'h', 0, 'e', 0, ' ', 0, 's', 0, 'e', 0, 'r', 0, 'i', 0, 'a', 0, 'l', 0, 
+	' ', 0, 's', 0, 't', 0, 'r', 0, 'i', 0, 'n', 0, 'g', 0, ' ', 0
+};
+
+uint8_t hiddev_info[] = {
+	66, /* bLength */
+	0x03, /* bDescriptorType */
+
+	/* bString */
+	'T', 0, 'h', 0, 'i', 0, 's', 0, ' ', 0, 'i', 0, 's', 0, ' ', 0, 't', 0, 
+	'h', 0, 'e', 0, ' ', 0, 'c', 0, 'o', 0, 'n', 0, 'f', 0, 'i', 0, 'g', 0, 
+	'u', 0, 'r', 0, 'a', 0, 't', 0, 'i', 0, 'o', 0, 'n', 0, ' ', 0, 's', 0, 
+	't', 0, 'r', 0, 'i', 0, 'n', 0, 'g', 0
+};
+
+uint8_t cdc_info[] = {
+	66, /* bLength */
+	0x03, /* bDescriptorType */
+
+	/* bString */
+	'T', 0, 'h', 0, 'i', 0, 's', 0, ' ', 0, 'i', 0, 's', 0, ' ', 0, 't', 0, 
+	'h', 0, 'e', 0, ' ', 0, 'c', 0, 'o', 0, 'n', 0, 'f', 0, 'i', 0, 'g', 0, 
+	'u', 0, 'r', 0, 'a', 0, 't', 0, 'i', 0, 'o', 0, 'n', 0, ' ', 0, 's', 0, 
+	't', 0, 'r', 0, 'i', 0, 'n', 0, 'g', 0
+};
+
+uint8_t *string_index[32];
 
 if_handler_t if_handlers[256]; // FIXME: here wasting 1KiB of ram
 ep_handler_t ep_handlers[7];
@@ -151,6 +207,13 @@ void usb_start() {
 	hiddev_init();
 
 	cdc_acm_init();
+
+	string_index[0] = lang_desc;
+	string_index[1] = vendor_info;
+	string_index[2] = product_info;
+	string_index[3] = serial_number;
+	string_index[4] = hiddev_info;
+	string_index[5] = cdc_info;
 
 	init();
 	PFIC_EnableIRQ(USB_IRQn);

@@ -85,7 +85,7 @@ uint16_t ctrl_load_chunk(void *buf, uint16_t len2load, uint16_t req_len, int dat
 
 // TODO: ctrl_send_chunk_auto()
 
-void ctrl_load_short_chunk(void *buf, uint16_t len)
+static void ctrl_load_short_chunk(void *buf, uint16_t len)
 {
 	_TRACE();
 	ctrl_load_chunk(buf, len, len, 1);
@@ -122,7 +122,7 @@ static uint16_t remain_len, req_len, data_tog;
 void start_send_block(void *buf, uint16_t len)
 {
 	req_len = len;
-	remain_len = ctrl_load_chunk(cfg_desc, len, len, 1);
+	remain_len = ctrl_load_chunk(buf, len, len, 1);
 }
 
 static void send_next_chunk()
@@ -130,6 +130,8 @@ static void send_next_chunk()
 	if (remain_len) {
 		remain_len = ctrl_load_chunk(p_desc, remain_len, req_len, data_tog);
 		data_tog = !data_tog;
+	} else {
+		data_tog = 0;
 	}
 }
 

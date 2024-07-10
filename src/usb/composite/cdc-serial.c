@@ -9,7 +9,6 @@
 #define NOTI_EP_NUM   (2)
 #define DATA_EP_NUM   (3)
 #define ACM_IF_NUM    (1)
-#define DATA_IF_NUM   (2)
 
 #define USB_DESCTYPE_CS_INTERFACE 0x24
 
@@ -29,7 +28,7 @@ static USB_ITF_DESCR acm_if_desc = {
 	.bDescriptorType = USB_DESCR_TYP_INTERF,
 	.bInterfaceNumber = ACM_IF_NUM,
 	.bAlternateSetting = 0,
-	.bNumEndpoints = 3, // Only a Notification Endpoint
+	.bNumEndpoints = 3, // A Notification and RX/TX Endpoint
 
 	.bInterfaceClass = 0x02, /* Communications and CDC Control */
 	.bInterfaceSubClass = 2, /* ACM subclass */
@@ -67,7 +66,7 @@ static uint8_t callmgr_func_desc[] = {
 static USB_ENDP_DESCR noti_ep_desc = {
 	.bLength = sizeof(USB_ENDP_DESCR),
 	.bDescriptorType = USB_DESCR_TYP_ENDP,
-	.bEndpointAddress = 0x80 | NOTI_EP_NUM, /* IN enpoint */
+	.bEndpointAddress = 0x80 | NOTI_EP_NUM, /* IN endpoint */
 	.bmAttributes = 0x03,       /* Interrupt transfer */
 	.wMaxPacketSize = 64,       /* bytes */
 	.bInterval = 0xff
@@ -77,7 +76,7 @@ static USB_ENDP_DESCR noti_ep_desc = {
 static USB_ENDP_DESCR tx_ep_desc = {
 	.bLength = sizeof(USB_ENDP_DESCR),
 	.bDescriptorType = USB_DESCR_TYP_ENDP,
-	.bEndpointAddress = 0x80 | DATA_EP_NUM, /* IN enpoint */
+	.bEndpointAddress = 0x80 | DATA_EP_NUM, /* IN endpoint */
 	.bmAttributes = 0x02,       /* Bulk */
 	.wMaxPacketSize = 64,       /* bytes */
 	.bInterval = 0xff
@@ -87,7 +86,7 @@ static USB_ENDP_DESCR tx_ep_desc = {
 static USB_ENDP_DESCR rx_ep_desc = {
 	.bLength = sizeof(USB_ENDP_DESCR),
 	.bDescriptorType = USB_DESCR_TYP_ENDP,
-	.bEndpointAddress = DATA_EP_NUM, /* OUT enpoint */
+	.bEndpointAddress = DATA_EP_NUM, /* OUT endpoint */
 	.bmAttributes = 0x02,       /* Bulk */
 	.wMaxPacketSize = 64,       /* bytes */
 	.bInterval = 0xff

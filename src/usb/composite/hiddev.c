@@ -46,7 +46,7 @@ static USB_HID_DESCR hid_desc = {
 static USB_ENDP_DESCR read_ep_desc = {
 	.bLength = sizeof(USB_ENDP_DESCR),
 	.bDescriptorType = USB_DESCR_TYP_ENDP,
-	.bEndpointAddress = 0x80 | EP_NUM, /* IN enpoint */
+	.bEndpointAddress = 0x80 | EP_NUM, /* IN endpoint */
 	.bmAttributes = 0x03, /* exchange data over Interrupt */
 	.wMaxPacketSize = sizeof(hid_report), /* bytes */
 	.bInterval = 0xff /* polling interval */
@@ -55,10 +55,10 @@ static USB_ENDP_DESCR read_ep_desc = {
 static USB_ENDP_DESCR write_ep_desc = {
 	.bLength = sizeof(USB_ENDP_DESCR),
 	.bDescriptorType = USB_DESCR_TYP_ENDP,
-	.bEndpointAddress = EP_NUM, /* IN enpoint */
+	.bEndpointAddress = EP_NUM, /* IN endpoint */
 	.bmAttributes = 0x03, /* exchange data over Interrupt */
 	.wMaxPacketSize = sizeof(hid_report), /* bytes */
-	.bInterval = 0xff /* polling interval */
+	.bInterval = 8 /* polling interval */
 };
 
 static const uint8_t report_desc[] = {
@@ -100,7 +100,7 @@ static void if_handler(USB_SETUP_REQ * request)
 		{
 		case USB_DESCR_TYP_REPORT:
 			PRINT("- USB_DESCR_TYP_REPORT\n");
-			ctrl_load_short_chunk(report_desc, sizeof(report_desc));
+			start_send_block(report_desc, sizeof(report_desc));
 			break;
 
 		default:
@@ -116,12 +116,12 @@ static void if_handler(USB_SETUP_REQ * request)
 
 	case HID_GET_IDLE:
 		PRINT("- HID_GET_IDLE\n");
-		ctrl_load_short_chunk(&idle_val, 1);
+		start_send_block(&idle_val, 1);
 		break;
 
 	case HID_GET_PROTOCOL:
 		PRINT("- HID_GET_PROTOCOL\n");
-		ctrl_load_short_chunk(&report_val, 1);
+		start_send_block(&report_val, 1);
 		break;
 
 	case HID_SET_REPORT:
