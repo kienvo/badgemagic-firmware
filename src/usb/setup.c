@@ -4,26 +4,6 @@
 
 #include "usb.h"
 
-USB_DEV_DESCR dev_desc = {
-	.bLength = sizeof(USB_DEV_DESCR),
-	.bDescriptorType = 0x01,
-	.bcdUSB = 0x0110,
-
-	.bDeviceClass = 0x00,
-	.bDeviceSubClass = 0x00,
-	.bDeviceProtocol = 0x00,
-
-	.bMaxPacketSize0 = MAX_PACKET_SIZE,
-
-	.idVendor = 0x0416,
-	.idProduct = 0x5020,
-	.bcdDevice = 0x0000,
-	.iManufacturer = 1, // TODO: update strings
-	.iProduct = 2,
-	.iSerialNumber = 3,
-	.bNumConfigurations = 0x01
-};
-
 /* Configuration Descriptor template */
 USB_CFG_DESCR cfg_static = {
 	.bLength = sizeof(USB_CFG_DESCR),

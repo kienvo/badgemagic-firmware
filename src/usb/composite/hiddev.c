@@ -99,7 +99,7 @@ static void if_handler(USB_SETUP_REQ * request)
 		{
 		case USB_DESCR_TYP_REPORT:
 			PRINT("- USB_DESCR_TYP_REPORT\n");
-			start_send_block(report_desc, sizeof(report_desc));
+			ctrl_start_load_block(report_desc, sizeof(report_desc));
 			break;
 
 		default:
@@ -115,12 +115,12 @@ static void if_handler(USB_SETUP_REQ * request)
 
 	case HID_GET_IDLE:
 		PRINT("- HID_GET_IDLE\n");
-		start_send_block(&idle_val, 1);
+		ctrl_start_load_block(&idle_val, 1);
 		break;
 
 	case HID_GET_PROTOCOL:
 		PRINT("- HID_GET_PROTOCOL\n");
-		start_send_block(&report_val, 1);
+		ctrl_start_load_block(&report_val, 1);
 		break;
 
 	case HID_SET_REPORT:
