@@ -7,37 +7,43 @@ extern USB_DEV_DESCR dev_desc;
 extern uint8_t *cfg_desc;
 extern ep_handler_t ep_handlers[];
 extern if_handler_t if_handlers[];
+
 extern uint8_t ep0buf[];
 extern uint8_t *string_index[];
+
+static void desc_dev(USB_SETUP_REQ *request)
+{
+	start_send_block(&dev_desc, dev_desc.bLength);
+}
+
+static void desc_config(USB_SETUP_REQ *request)
+{
+	start_send_block(cfg_desc, request->wLength);
+}
+
+static void desc_string(USB_SETUP_REQ *request)
+{
+	uint8_t index = request->wValue & 0xff;
+	if (index > 4)
+		return;
+	start_send_block(string_index[index], string_index[index][0]);
+}
 
 static void dev_getDesc(USB_SETUP_REQ *request)
 {
 	_TRACE();
 	uint8_t type = request->wValue >> 8;
-	uint8_t index = request->wValue & 0xff;
+	
 	PRINT("Descriptor type: 0x%02x\n", type);
 
-	switch(type) {
-	case USB_DESCR_TYP_DEVICE:
-		PRINT("- USB_DESCR_TYP_DEVICE\n");
-		start_send_block(&dev_desc, dev_desc.bLength);
-		break;
-
-	case USB_DESCR_TYP_CONFIG:
-		PRINT("- USB_DESCR_TYP_CONFIG\n");
-		start_send_block(cfg_desc, request->wLength);
-		break;
-
-	case USB_DESCR_TYP_STRING:
-		PRINT("- USB_DESCR_TYP_STRING\n");
-		if (index > 4)
-			return;
-		start_send_block(string_index[index], string_index[index][0]);
-		break;
-
-	default:
-		break;
-	}
+	static const void (*desc_type_handlers[4])(USB_SETUP_REQ *request) = {
+		NULL,
+		desc_dev,
+		desc_config,
+		desc_string
+	};
+	if (type <= 3 && desc_type_handlers[type])
+		desc_type_handlers[type](request);
 }
 
 static void dev_getStatus(USB_SETUP_REQ *request)
@@ -48,73 +54,68 @@ static void dev_getStatus(USB_SETUP_REQ *request)
 	start_send_block(buf, 2);
 }
 
-static void dev_clearFeature()
+static void dev_clearFeature(USB_SETUP_REQ *request)
 {
 	_TRACE();
 	// DEVICE_REMOTE_WAKEUP and TEST_MODE are not available, ignore.
 }
 
-static void dev_setFeature()
+static void dev_setFeature(USB_SETUP_REQ *request)
 {
 	_TRACE();
 	// DEVICE_REMOTE_WAKEUP and TEST_MODE are not available, ignore.
+}
+
+static void dev_setAddress(USB_SETUP_REQ *request)
+{
+	_TRACE();
+	/* new address will be loadled in the next IN poll,
+	so here just sending a ACK */
+	set_address(request->wValue & 0xff);
+	send_handshake(0, 1, ACK, 1, 0);
+}
+
+// FIXME: for now, multiple configuration is not supported
+static uint8_t devcfg;
+
+static void dev_getConfig(USB_SETUP_REQ *request)
+{
+	_TRACE();
+	start_send_block(&devcfg, 1);
+}
+
+static void dev_setConfig(USB_SETUP_REQ *request)
+{
+	_TRACE();
+	devcfg = (request->wValue) & 0xff;
+	send_handshake(0, 1, ACK, 1, 0);
 }
 
 void handle_devreq(USB_SETUP_REQ *request)
 {
 	_TRACE();
 
-	// FIXME: for now, multiple configuration is not supported
-	static uint8_t devcfg;
-
 	uint8_t req = request->bRequest;
 	PRINT("bRequest: 0x%02x\n", req);
 
-	switch(req) {
-	case USB_GET_STATUS:
-		PRINT("- USB_GET_STATUS\n");
-		dev_getStatus(request);
-		break;
+	static const void (*dev_req_handlers[13])(USB_SETUP_REQ *request) = {
+		dev_getStatus,
+		dev_clearFeature,
+		NULL, // Reserved
+		dev_setFeature,
+		NULL, // Reserved
+		dev_setAddress,
+		dev_getDesc,
+		NULL, // set desc
+		dev_getConfig,
+		dev_setConfig,
+		NULL, // get interface
+		NULL, // set interface
+		NULL, // sync frame
+	};
 
-	case USB_CLEAR_FEATURE:
-		PRINT("- USB_CLEAR_FEATURE\n");
-		dev_clearFeature();
-		break;
-	case USB_SET_FEATURE:
-		PRINT("- USB_SET_FEATURE\n");
-		dev_setFeature();
-		break;
-
-	case USB_SET_ADDRESS:
-		PRINT("- USB_SET_ADDRESS\n");
-		/* new address will be loadled in the next IN poll,
-		so here just sending a ACK */
-		set_address(request->wValue & 0xff);
-		send_handshake(0, 1, ACK, 1, 0);
-		break;
-
-	case USB_GET_DESCRIPTOR:
-		PRINT("- USB_GET_DESCRIPTOR\n");
-		dev_getDesc(request);
-		break;
-	case USB_SET_DESCRIPTOR:
-		PRINT("- USB_SET_DESCRIPTOR\n");
-		// return dev_set_desc();
-		break;
-	
-	case USB_GET_CONFIGURATION:
-		PRINT("- USB_GET_CONFIGURATION\n");
-		start_send_block(&devcfg, 1);
-		break;
-	case USB_SET_CONFIGURATION:
-		PRINT("- USB_SET_CONFIGURATION\n");
-		devcfg = (request->wValue) & 0xff;
-		send_handshake(0, 1, ACK, 1, 0);
-		break;
-
-	default:
-		break;
-	}	
+	if (req <= 12 && dev_req_handlers[req])
+		dev_req_handlers[req](request);
 }
 
 void handle_ifreq(USB_SETUP_REQ *request)
