@@ -5,9 +5,6 @@
 
 #include "../usb.h"
 #include "../debug.h"
-#include "../../data.h"
-#include "../../power.h"
-#include "../../leddrv.h"
 
 #define EP_NUM   (1)
 #define IF_NUM   (0)
@@ -28,7 +25,7 @@ static USB_ITF_DESCR if_desc = {
 	.bInterfaceClass = 0x03, /* HID class */
 	.bInterfaceSubClass = 0, /* No subclass */
 	.bInterfaceProtocol = 0, /* Not a Mouse nor Keyboard */
-	.iInterface = 0 /* Index of string descriptor */ // For now, placed a 0 for testing
+	.iInterface = 0 /* Index of string descriptor */
 };
 
 static USB_HID_DESCR hid_desc = {
@@ -109,7 +106,7 @@ static void if_handler(USB_SETUP_REQ * request)
 
 	case HID_GET_REPORT:
 		PRINT("- HID_GET_REPORT\n");
-		// send_handshake(ep_num, 1, ACK, 1, request->wLength);
+		// prepare_handshake(ep_num, ACK, 1, request->wLength);
 		// TODO: update this request, ignore for now
 		break;
 
@@ -126,12 +123,12 @@ static void if_handler(USB_SETUP_REQ * request)
 	case HID_SET_REPORT:
 		PRINT("- HID_SET_REPORT\n");
 		// Enable control register to receive interrupt (expect receiving DATA1 on EP_NUM)
-		send_handshake(0, 1, ACK, 1, 0);
+		ctrl_ack();
 		break;
 
 	case HID_SET_IDLE:
 		PRINT("- HID_SET_IDLE\n");
-		send_handshake(0, 1, ACK, 1, 0);
+		ctrl_ack();
 		break;
 
 	case HID_SET_PROTOCOL:
@@ -156,7 +153,7 @@ static void ep_handler(USB_SETUP_REQ *request)
 	case UIS_TOKEN_OUT:
 		if (on_write)
 			on_write(ep_out, R8_USB_RX_LEN);
-		send_handshake(EP_NUM, 1, ACK, tog, 0);
+		prepare_handshake(EP_NUM, ACK, tog, 0);
 		tog = !tog;
 		break;
 
@@ -165,9 +162,9 @@ static void ep_handler(USB_SETUP_REQ *request)
 		PRINT("received a interrupt (read request)\n");
 		if (intflag) {
 			intflag = 0;
-			send_handshake(EP_NUM, 1, ACK, 1, sizeof(hid_report));
+			prepare_handshake(EP_NUM, ACK, 1, sizeof(hid_report));
 		} else {
-			send_handshake(EP_NUM, 1, NAK, 1, 0);
+			prepare_handshake(EP_NUM, NAK, 1, 0);
 		}
 		break;
 	
@@ -181,7 +178,7 @@ void hiddev_report(uint8_t key)
 {
 	hid_report[2] = key;
 	memcpy(ep_in, hid_report, sizeof(hid_report));
-	send_handshake(EP_NUM, 1, ACK, 0, sizeof(hid_report));
+	prepare_handshake(EP_NUM, ACK, 0, sizeof(hid_report));
 	intflag = 1;
 }
 

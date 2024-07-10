@@ -7,6 +7,7 @@
 
 enum RESPONSE_TYPE {
 	ACK = 0,
+	NO_RESP,
 	NAK,
 	STALL,
 };
@@ -17,7 +18,8 @@ int ep_register(int ep_num, ep_handler_t handler);
 int if_register(uint8_t if_num, if_handler_t handler);
 void dma_register(uint8_t endpoint_number, void *buf_addr);
 
-void send_handshake(uint8_t ep_num, int dir, int type, int toggle, uint8_t len);
+void prepare_handshake(uint8_t ep_num, int type, int tog, uint8_t len);
+void ctrl_ack();
 
 void ep_send(uint8_t ep_num, uint8_t len);
 

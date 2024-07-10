@@ -115,7 +115,7 @@ static void noti_ep_handler(USB_SETUP_REQ *request)
 		PRINT("- USB_CLEAR_FEATURE\n");
 		PRINT("wFeatureSelector: 0x%02x\n", request->wValue);
 		if (request->wValue == 0) { // Endpoint halt
-			send_handshake(NOTI_EP_NUM, 1, ACK, 1, 0);
+			prepare_handshake(NOTI_EP_NUM, ACK, 1, 0);
 		}
 		break;
 
@@ -137,14 +137,14 @@ static void data_ep_handler(USB_SETUP_REQ *request)
 		if (on_write)
 			on_write(data_ep_out, R8_USB_RX_LEN);
 		tog = !tog;
-		send_handshake(DATA_EP_NUM, 1, ACK, tog, 0);
+		prepare_handshake(DATA_EP_NUM, ACK, tog, 0);
 		break;
 
 	case UIS_TOKEN_IN:
 		if (req_len > 0) { // FIXME: move to multiple transfer, here just testing
 			req_len = 0;
 		} else {
-			send_handshake(DATA_EP_NUM, 1, STALL, 1, 0);
+			prepare_handshake(DATA_EP_NUM, STALL, 1, 0);
 		}
 		break;
 	
@@ -157,7 +157,7 @@ void cdc_acm_tx(uint8_t *buf, uint8_t len)
 {
 	static int tog;
 	memcpy(data_ep_in, buf, len);
-	send_handshake(DATA_EP_NUM, 1, ACK, tog, len);
+	prepare_handshake(DATA_EP_NUM, ACK, tog, len);
 	tog = !tog;
 	req_len = len;
 }

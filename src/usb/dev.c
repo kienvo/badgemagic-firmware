@@ -129,7 +129,7 @@ static void dev_setAddress(USB_SETUP_REQ *request)
 	/* new address will be loadled in the next IN poll,
 	so here just sending a ACK */
 	usb_set_address(request->wValue & 0xff);
-	send_handshake(0, 1, ACK, 1, 0);
+	ctrl_ack();
 }
 
 // FIXME: for now, multiple configuration is not supported
@@ -145,7 +145,7 @@ static void dev_setConfig(USB_SETUP_REQ *request)
 {
 	_TRACE();
 	devcfg = (request->wValue) & 0xff;
-	send_handshake(0, 1, ACK, 1, 0);
+	ctrl_ack();
 }
 
 void handle_devreq(USB_SETUP_REQ *request)

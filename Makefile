@@ -57,10 +57,9 @@ src/ble/profile/devinfo.c \
 src/ble/setup.c \
 src/ble/peripheral.c \
 src/data.c \
-src/usb/composite/hid-mouse.c \
 src/usb/composite/hiddev.c \
-src/usb/composite/hid-key.c \
 src/usb/composite/cdc-serial.c \
+src/usb/utils.c \
 src/usb/setup.c \
 src/usb/ctrl.c \
 src/usb/debug.c \
@@ -112,7 +111,7 @@ C_INCLUDES =  \
 # compile gcc flags
 ASFLAGS = $(MCU) $(AS_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-sections
 
-CFLAGS = $(MCU) $(C_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-sections
+CFLAGS = $(MCU) $(C_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-sections \
 
 ifeq ($(DEBUG), 1)
 CFLAGS += -g -gdwarf-2 -DDEBUG=$(DEBUG)

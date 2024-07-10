@@ -37,7 +37,6 @@ static void ep_handler(USB_SETUP_REQ *request)
 	_TRACE();
 
 	uint8_t req = request->bRequest;
-	PRINT("bRequest: 0x%02x (%s)\n", req, bRequest_parse(req));
 
 	/* Each interface will have their own request handler */
 	uint8_t recip = request->bRequestType & USB_REQ_RECIP_MASK;
@@ -57,8 +56,9 @@ static void ep_handler(USB_SETUP_REQ *request)
 		break;
 
 	case UIS_TOKEN_OUT:
+		PRINT("bRequest: 0x%02x (%s)\n", req, bRequest_parse(req));
 		if (req == USB_CLEAR_FEATURE) {
-			send_handshake(0, 1, ACK, 1, 0);
+			ctrl_ack();
 		}
 
 	case UIS_TOKEN_IN:
