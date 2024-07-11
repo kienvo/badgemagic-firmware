@@ -77,7 +77,7 @@ static USB_ENDP_DESCR tx_ep_desc = {
 	.bDescriptorType = USB_DESCR_TYP_ENDP,
 	.bEndpointAddress = 0x80 | DATA_EP_NUM, /* IN endpoint */
 	.bmAttributes = 0x02,       /* Bulk */
-	.wMaxPacketSize = 64,       /* bytes */
+	.wMaxPacketSize = MAX_PACKET_SIZE,       /* bytes */
 	.bInterval = 0xff
 };
 
@@ -87,7 +87,7 @@ static USB_ENDP_DESCR rx_ep_desc = {
 	.bDescriptorType = USB_DESCR_TYP_ENDP,
 	.bEndpointAddress = DATA_EP_NUM, /* OUT endpoint */
 	.bmAttributes = 0x02,       /* Bulk */
-	.wMaxPacketSize = 64,       /* bytes */
+	.wMaxPacketSize = MAX_PACKET_SIZE,       /* bytes */
 	.bInterval = 0xff
 };
 
@@ -116,7 +116,7 @@ static void noti_ep_handler(USB_SETUP_REQ *request)
 	}
 }
 
-volatile uint16_t transferred;
+static volatile uint16_t transferred;
 
 static void data_ep_handler(USB_SETUP_REQ *request)
 {
@@ -145,9 +145,11 @@ static void data_ep_handler(USB_SETUP_REQ *request)
 	}
 }
 
+// In case we want to send something to the host,
+// or want to see the log over ttyACMx
 void cdc_fill_IN(uint8_t *buf, uint8_t len)
 {
-	if (len > MAX_PACKET_SIZE)
+	if (len > tx_ep_desc.wMaxPacketSize)
 		return;
 
 	static int tog;
@@ -173,13 +175,13 @@ static int wait_until_sent(uint16_t timeout_ms)
 int cdc_tx_poll(uint8_t *buf, int len, uint16_t timeout_ms)
 {
 	int i = 0;
-	while (len > MAX_PACKET_SIZE) {
-		cdc_fill_IN(buf + i, MAX_PACKET_SIZE);
+	while (len > tx_ep_desc.wMaxPacketSize) {
+		cdc_fill_IN(buf + i, tx_ep_desc.wMaxPacketSize);
 		if (wait_until_sent(timeout_ms))
 			return -1;
 
-		i += MAX_PACKET_SIZE;
-		len -= MAX_PACKET_SIZE;
+		i += tx_ep_desc.wMaxPacketSize;
+		len -= tx_ep_desc.wMaxPacketSize;
 	}
 	cdc_fill_IN(buf + i, len);
 	if (wait_until_sent(timeout_ms))

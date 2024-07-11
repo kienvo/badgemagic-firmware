@@ -136,7 +136,7 @@ static void if_handler(USB_SETUP_REQ * request)
 	}
 }
 
-static int intflag;
+static volatile uint16_t transferred;
 
 static void ep_handler(USB_SETUP_REQ *request)
 {
@@ -153,12 +153,12 @@ static void ep_handler(USB_SETUP_REQ *request)
 		break;
 
 	case UIS_TOKEN_IN:
-		if (intflag) {
-			intflag = 0;
-			set_handshake(EP_NUM, ACK, 1, MAX_PACKET_SIZE);
+		if (transferred == 0) {
+			transferred = 1;
 		} else {
 			set_handshake(EP_NUM, NAK, 1, 0);
 		}
+		break;
 		break;
 	
 	default:
@@ -166,12 +166,49 @@ static void ep_handler(USB_SETUP_REQ *request)
 	}
 }
 
-// In case we want to send something to the host
-void hiddev_report(void *buf)
+// In case we want to send something to the host, 
+// or want to see the log over hidraw by `cat /dev/hidrawX`
+void hiddev_fill_IN(uint8_t *buf, uint8_t len)
 {
-	// memcpy(ep_in, hid_report, sizeof(hid_report));
-	// set_handshake(EP_NUM, ACK, 0, sizeof(hid_report));
-	// intflag = 1;
+	if (len > MAX_PACKET_SIZE)
+		return;
+
+	static int tog;
+
+	memcpy(ep_in, buf, len);
+	set_handshake(EP_NUM, ACK, tog, len);
+
+	tog = !tog;
+	transferred = 0;
+}
+
+static int wait_until_sent(uint16_t timeout_ms)
+{
+	while(timeout_ms--) {
+		if (transferred) {
+			return 0;
+		}
+		DelayMs(1);
+	}
+	return -1;
+}
+
+int hiddev_tx_poll(uint8_t *buf, int len, uint16_t timeout_ms)
+{
+	int i = 0;
+	while (len > MAX_PACKET_SIZE) {
+		hiddev_fill_IN(buf + i, MAX_PACKET_SIZE);
+		if (wait_until_sent(timeout_ms))
+			return -1;
+
+		i += MAX_PACKET_SIZE;
+		len -= MAX_PACKET_SIZE;
+	}
+	hiddev_fill_IN(buf + i, len);
+	if (wait_until_sent(timeout_ms))
+		return -1;
+
+	return 0;
 }
 
 void hiddev_onWrite(void (*cb)(uint8_t *buf, uint16_t len))

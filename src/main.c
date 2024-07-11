@@ -215,6 +215,7 @@ int main()
 
 		sprintf(s, "abc %d\n", j++);
 		cdc_tx_poll(s, strlen(s), 100);
+		hiddev_tx_poll(s, strlen(s), 100);
 		DelayMs(200);
     }
 }
