@@ -1,10 +1,11 @@
 #include "CH58x_common.h"
 
-#include "usb.h"
+#include "utils.h"
 #include "debug.h"
 
 extern uint8_t *cfg_desc;
-extern uint8_t ep0buf[];
+
+void usb_set_address(uint8_t ad);
 
 USB_DEV_DESCR dev_desc = {
 	.bLength = sizeof(USB_DEV_DESCR),
@@ -20,7 +21,7 @@ USB_DEV_DESCR dev_desc = {
 	.idVendor = 0x0416,
 	.idProduct = 0x5020,
 	.bcdDevice = 0x0000,
-	.iManufacturer = 1, // TODO: update strings
+	.iManufacturer = 1,
 	.iProduct = 2,
 	.iSerialNumber = 3,
 	.bNumConfigurations = 0x01
@@ -132,7 +133,7 @@ static void dev_setAddress(USB_SETUP_REQ *request)
 	ctrl_ack();
 }
 
-// FIXME: for now, multiple configuration is not supported
+// For now, multiple configuration is not supported
 static uint8_t devcfg;
 
 static void dev_getConfig(USB_SETUP_REQ *request)
@@ -152,9 +153,6 @@ void handle_devreq(USB_SETUP_REQ *request)
 {
 	_TRACE();
 
-	uint8_t req = request->bRequest;
-	PRINT("bRequest: 0x%02x\n", req);
-
 	static const void (*dev_req_handlers[13])(USB_SETUP_REQ *request) = {
 		dev_getStatus,
 		dev_clearFeature,
@@ -171,6 +169,7 @@ void handle_devreq(USB_SETUP_REQ *request)
 		NULL, // sync frame
 	};
 
+	uint8_t req = request->bRequest;
 	if (req <= 12 && dev_req_handlers[req])
 		dev_req_handlers[req](request);
 }

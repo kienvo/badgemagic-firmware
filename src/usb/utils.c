@@ -1,10 +1,11 @@
 #include "CH58x_common.h"
 
-#include "usb.h"
+#include "utils.h"
 #include "debug.h"
 
-// A response a has been set, if not, that transaction hasn't been handled
+// A response a has been set, if not, that transaction is not handled
 int res_sent;
+
 static uint8_t *current_IN_buf;
 
 static volatile uint8_t *len_regs[] = {
@@ -55,16 +56,7 @@ void set_handshake(uint8_t ep_num, int type, int tog, uint8_t len)
 void ctrl_ack()
 {
 	_TRACE();
-	set_handshake(0, ACK, 1, 0);
-}
-
-void ep_send(uint8_t ep_num, uint8_t len)
-{
-	_TRACE();
-	if (ep_num > 7) // CH582 support only 8-pair endpoint
-		return;
-	*len_regs[ep_num] = len;
-	*ctrl_regs[ep_num] = (*ctrl_regs[ep_num] & ~MASK_UEP_T_RES) | UEP_T_RES_ACK;
+	set_handshake(0, USB_ACK, 1, 0);
 }
 
 void clear_handshake_sent_flag()
@@ -81,7 +73,8 @@ static uint8_t *p_buf;
 static uint16_t remain_len, req_len, _tog;
 
 static uint16_t 
-load_chunk(void *ep_buf, void *block, uint16_t block_len, uint16_t req_len, int tog)
+load_chunk(void *ep_buf, void *block, uint16_t block_len, uint16_t req_len, 
+				int tog)
 {
 	_TRACE();
 	uint16_t remain_len = 0;
@@ -98,7 +91,7 @@ load_chunk(void *ep_buf, void *block, uint16_t block_len, uint16_t req_len, int 
 	memcpy(ep_buf, p_buf, block_len);
 	p_buf += block_len;
 
-	set_handshake(0, ACK, tog, block_len);
+	set_handshake(0, USB_ACK, tog, block_len);
 
 	PRINT("remain_len: %d\n", remain_len);
 	return remain_len;
@@ -115,7 +108,8 @@ int usb_load_next_chunk()
 {
 	_TRACE();
 	if (remain_len) {
-		remain_len = load_chunk(current_IN_buf, p_buf, remain_len, req_len, _tog);
+		remain_len = load_chunk(current_IN_buf, p_buf, remain_len, req_len,
+				_tog);
 		_tog = !_tog;
 	} else {
 		_tog = 0;
@@ -124,7 +118,8 @@ int usb_load_next_chunk()
 	return remain_len;
 }
 
-uint16_t usb_start_load_block(void *ep_IN_buf, void *buf, uint16_t len, int tog)
+uint16_t
+usb_start_load_block(void *ep_IN_buf, void *buf, uint16_t len, int tog)
 {
 	_TRACE();
 	req_len = len;

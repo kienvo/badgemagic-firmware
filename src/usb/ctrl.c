@@ -1,11 +1,14 @@
 
 #include "CH58x_common.h"
 
-#include "usb.h"
+#include "utils.h"
 #include "debug.h"
 
-extern if_handler_t if_handlers[];
-extern ep_handler_t ep_handlers[];
+extern void (*if_handlers[])(USB_SETUP_REQ *request);
+extern void (*ep_handlers[])();
+
+void handle_devreq(USB_SETUP_REQ *request);
+
 static uint8_t address;
 
 /* EP0 + EP4(IN + OUT) */
@@ -32,10 +35,11 @@ static void route_interfaces(USB_SETUP_REQ *request)
 		if_handlers[ifn](request);
 }
 
-static void ep_handler(USB_SETUP_REQ *request)
+static void ep_handler()
 {
 	_TRACE();
 
+	USB_SETUP_REQ *request = (USB_SETUP_REQ *)ep0buf;
 	uint8_t req = request->bRequest;
 
 	/* Each interface will have their own request handler */
@@ -49,14 +53,14 @@ static void ep_handler(USB_SETUP_REQ *request)
 	switch(token) {
 
 	case UIS_TOKEN_SETUP:
+		print_setuppk(req);
+
 		if (recip == USB_REQ_RECIP_DEVICE) {
 			handle_devreq(request);
 		}
-		PRINT("received a setup packet\n");
 		break;
 
 	case UIS_TOKEN_OUT:
-		PRINT("bRequest: 0x%02x (%s)\n", req, bRequest_parse(req));
 		if (req == USB_CLEAR_FEATURE) {
 			ctrl_ack();
 		}
@@ -73,26 +77,25 @@ static void ep_handler(USB_SETUP_REQ *request)
 
 void ctrl_init()
 {
-	ep_register(0, ep_handler);
+	ep_cb_register(0, ep_handler);
 	dma_register(0, ep0buf);
 }
 
-static void route_enpoints(USB_SETUP_REQ *request)
+static void route_enpoints()
 {
 	_TRACE();
-	usb_status_reg_parse(R8_USB_INT_ST);
 
-	/* Workaround for getting a setup packet but EP is 0x02 for unknown reason.
+	/* Workaround to solve a setup packet with EP 0x02 for unknown reason.
 	This happens when return from the bootloader or after a sotfware reset. */
 	uint8_t token = R8_USB_INT_ST & MASK_UIS_TOKEN;
 	if (token == UIS_TOKEN_SETUP) {
-		ep_handlers[0](request);
+		ep_handlers[0]();
 	}
 
 	uint8_t ep_num = R8_USB_INT_ST & MASK_UIS_ENDP;
 
 	if (ep_num < 8 && ep_handlers[ep_num])
-		ep_handlers[ep_num](request);
+		ep_handlers[ep_num]();
 }
 
 static void handle_busReset()
@@ -132,10 +135,7 @@ void USB_IRQHandler(void) {
 		PRINT("usb: RX Length reg: %d\n", R8_USB_RX_LEN);
 		print_status_reg();
 
-		USB_SETUP_REQ *req = (USB_SETUP_REQ *)ep0buf;
-		print_setuppk(req);
-
-		route_enpoints(req);
+		route_enpoints();
 	}
 	else if (intflag & RB_UIF_BUS_RST) {
 		handle_busReset();

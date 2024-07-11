@@ -1,6 +1,5 @@
 #include "CH58x_common.h"
 
-// FIXME: use parameter instead
 void print_setuppk(USB_SETUP_REQ *request)
 {
 	PRINT("Setup request:\n");
@@ -10,30 +9,7 @@ void print_setuppk(USB_SETUP_REQ *request)
 	char *recipient[] = {
 		"Device", "Interface", "Endpoint", "Other","Reserved Recipient"
 	};
-
-	uint8_t t = request->bRequestType;
-	uint8_t type_val = (t & USB_REQ_TYP_MASK) >> 5;
-	uint8_t recip_val = t & USB_REQ_RECIP_MASK;
-	if (recip_val > 4)
-		recip_val = 4;
-
-	PRINT("\t- bRequestType: 0x%02x (%s|%s|%s)\n", t, dir[t>>7], 
-				type[type_val],
-				recipient[recip_val]);
-
-	PRINT("\t- bRequest: 0x%02x\n", request->bRequest);
-	PRINT("\t- wValue: 0x%04x\n", request->wValue);
-
-	PRINT("\t- wIndex%s: 0x%04x\n", 
-				recip_val == USB_REQ_RECIP_INTERF ? " (wInterfaceNumber)" : "",
-				request->wIndex);
-
-	PRINT("\t- wLength: 0x%04x\n", request->wLength);
-}
-
-char *bRequest_parse(uint8_t bReq_val)
-{
-	char *meaning[] = {
+	char *bRequest[] = {
 		"GET_STATUS",
 		"CLEAR_FEATURE",
 		"Reserved",
@@ -48,25 +24,33 @@ char *bRequest_parse(uint8_t bReq_val)
 		"SET_INTERFACE",
 		"SYNCH_FRAME",
 	};
-	if (bReq_val >= sizeof(meaning))
-		return "N/A";
-	return meaning[bReq_val];
-}
 
-void usb_status_reg_parse(uint8_t reg)
-{
-	char *token_type[] = { // FIXME: resort this debuging mess in ifdef
-		"OUT", "SOF","IN", "IDLE",
-	};
-	uint8_t ep_num = reg & MASK_UIS_ENDP;
-	uint8_t token = (reg & MASK_UIS_TOKEN) >> 4;
-	PRINT("%s: 0x%02x\n", token_type[token], ep_num);
+	uint8_t t = request->bRequestType;
+	uint8_t req = request->bRequest;
+	uint8_t type_val = (t & USB_REQ_TYP_MASK) >> 5;
+	uint8_t recip_val = t & USB_REQ_RECIP_MASK;
+	if (recip_val > 4)
+		recip_val = 4;
+
+	PRINT("\t- bRequestType: 0x%02x (%s|%s|%s)\n", t, dir[t>>7], 
+				type[type_val],
+				recipient[recip_val]);
+
+	PRINT("\t- bRequest: 0x%02x (%s)\n", req, req > 12 ?
+				"N/A" : bRequest[req]);
+	PRINT("\t- wValue: 0x%04x\n", request->wValue);
+
+	PRINT("\t- wIndex%s: 0x%04x\n", 
+				recip_val == USB_REQ_RECIP_INTERF ? " (wInterfaceNumber)" : "",
+				request->wIndex);
+
+	PRINT("\t- wLength: 0x%04x\n", request->wLength);
 }
 
 void print_status_reg()
 {
 	char *token_type[] = {
-		"OUT", "SOF","IN", "IDLE",
+		"OUT", "SOF","IN", "SETUP",
 	};
 	uint8_t reg = R8_USB_INT_ST;
 	uint8_t is_setup = reg & RB_UIS_SETUP_ACT;
@@ -74,7 +58,7 @@ void print_status_reg()
 	uint8_t token = (reg & MASK_UIS_TOKEN) >> 4;
 	uint8_t ep_num = reg & MASK_UIS_ENDP;
 	PRINT("usb: Status reg: 0x%02x (%s|%s|%s|EP:%d)\n", reg, 
-				is_setup ? "SETUP" : "0",
+				is_setup ? "SETUP??" : "0",
 				toggle ? "TOGGLE OK" : "0", token_type[token], ep_num);
 }
 

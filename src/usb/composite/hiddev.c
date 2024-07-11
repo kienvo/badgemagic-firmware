@@ -3,7 +3,7 @@
 
 #include "CH58x_common.h"
 
-#include "../usb.h"
+#include "../utils.h"
 #include "../debug.h"
 
 #define EP_NUM   (1)
@@ -80,7 +80,7 @@ static const uint8_t report_desc[] = {
 	0xC0,              // End Collection
 };
 
-static void if_handler(USB_SETUP_REQ * request)
+static void hid_request_handler(USB_SETUP_REQ * request)
 {
 	_TRACE();
 	static uint8_t report_val, idle_val;
@@ -138,7 +138,7 @@ static void if_handler(USB_SETUP_REQ * request)
 
 static volatile uint16_t transferred;
 
-static void ep_handler(USB_SETUP_REQ *request)
+static void ep_handler()
 {
 	_TRACE();
 	static int tog;
@@ -148,7 +148,7 @@ static void ep_handler(USB_SETUP_REQ *request)
 	case UIS_TOKEN_OUT:
 		if (on_write)
 			on_write(ep_out, R8_USB_RX_LEN);
-		set_handshake(EP_NUM, ACK, tog, 0);
+		set_handshake(EP_NUM, USB_ACK, tog, 0);
 		tog = !tog;
 		break;
 
@@ -156,7 +156,7 @@ static void ep_handler(USB_SETUP_REQ *request)
 		if (transferred == 0) {
 			transferred = 1;
 		} else {
-			set_handshake(EP_NUM, NAK, 1, 0);
+			set_handshake(EP_NUM, USB_NAK, 1, 0);
 		}
 		break;
 		break;
@@ -166,17 +166,17 @@ static void ep_handler(USB_SETUP_REQ *request)
 	}
 }
 
-// In case we want to send something to the host, 
+// In case we want to send something to the host,
 // or want to see the log over hidraw by `cat /dev/hidrawX`
 void hiddev_fill_IN(uint8_t *buf, uint8_t len)
 {
-	if (len > MAX_PACKET_SIZE)
+	if (len > read_ep_desc.wMaxPacketSize)
 		return;
 
 	static int tog;
 
 	memcpy(ep_in, buf, len);
-	set_handshake(EP_NUM, ACK, tog, len);
+	set_handshake(EP_NUM, USB_ACK, tog, len);
 
 	tog = !tog;
 	transferred = 0;
@@ -196,13 +196,13 @@ static int wait_until_sent(uint16_t timeout_ms)
 int hiddev_tx_poll(uint8_t *buf, int len, uint16_t timeout_ms)
 {
 	int i = 0;
-	while (len > MAX_PACKET_SIZE) {
-		hiddev_fill_IN(buf + i, MAX_PACKET_SIZE);
+	while (len > read_ep_desc.wMaxPacketSize) {
+		hiddev_fill_IN(buf + i, read_ep_desc.wMaxPacketSize);
 		if (wait_until_sent(timeout_ms))
 			return -1;
 
-		i += MAX_PACKET_SIZE;
-		len -= MAX_PACKET_SIZE;
+		i += read_ep_desc.wMaxPacketSize;
+		len -= read_ep_desc.wMaxPacketSize;
 	}
 	hiddev_fill_IN(buf + i, len);
 	if (wait_until_sent(timeout_ms))
@@ -223,8 +223,8 @@ void hiddev_init()
 	cfg_desc_append(&read_ep_desc);
 	cfg_desc_append(&write_ep_desc);
 
-	if_register(IF_NUM, if_handler);
-	ep_register(EP_NUM, ep_handler);
+	if_cb_register(IF_NUM, hid_request_handler);
+	ep_cb_register(EP_NUM, ep_handler);
 
 	dma_register(EP_NUM, ep_out);
 }

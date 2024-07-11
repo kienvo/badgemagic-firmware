@@ -3,7 +3,7 @@
 
 #include "CH58x_common.h"
 
-#include "../usb.h"
+#include "../utils.h"
 #include "../debug.h"
 
 #define NOTI_EP_NUM   (2)
@@ -91,34 +91,21 @@ static USB_ENDP_DESCR rx_ep_desc = {
 	.bInterval = 0xff
 };
 
-static void acm_if_handler(USB_SETUP_REQ * request)
+static void cdc_request_handler(USB_SETUP_REQ * request)
 {
 	_TRACE();
-	// Handle CDC ACM class request here
+	// Handle CDC Class Request here
 }
 
-static void noti_ep_handler(USB_SETUP_REQ *request)
+static void noti_ep_handler()
 {
 	_TRACE();
-
-	uint8_t req = request->bRequest;
-	switch(req) {
-	case USB_CLEAR_FEATURE:
-		PRINT("- USB_CLEAR_FEATURE\n");
-		PRINT("wFeatureSelector: 0x%02x\n", request->wValue);
-		if (request->wValue == 0) { // Endpoint halt
-			set_handshake(NOTI_EP_NUM, ACK, 1, 0);
-		}
-		break;
-
-	default:
-		break;
-	}
+	// Handle Subclass Request here
 }
 
 static volatile uint16_t transferred;
 
-static void data_ep_handler(USB_SETUP_REQ *request)
+static void data_ep_handler()
 {
 	_TRACE();
 	static int tog;
@@ -129,14 +116,14 @@ static void data_ep_handler(USB_SETUP_REQ *request)
 		if (on_write)
 			on_write(data_ep_out, R8_USB_RX_LEN);
 		tog = !tog;
-		set_handshake(DATA_EP_NUM, ACK, tog, 0);
+		set_handshake(DATA_EP_NUM, USB_ACK, tog, 0);
 		break;
 
 	case UIS_TOKEN_IN:
 		if (transferred == 0) {
 			transferred = 1;
 		} else {
-			set_handshake(DATA_EP_NUM, NAK, 1, 0);
+			set_handshake(DATA_EP_NUM, USB_NAK, 1, 0);
 		}
 		break;
 	
@@ -155,7 +142,7 @@ void cdc_fill_IN(uint8_t *buf, uint8_t len)
 	static int tog;
 
 	memcpy(data_ep_in, buf, len);
-	set_handshake(DATA_EP_NUM, ACK, tog, len);
+	set_handshake(DATA_EP_NUM, USB_ACK, tog, len);
 
 	tog = !tog;
 	transferred = 0;
@@ -206,9 +193,9 @@ void cdc_acm_init()
 	cfg_desc_append(&rx_ep_desc);
 	cfg_desc_append(&tx_ep_desc);
 
-	if_register(ACM_IF_NUM, acm_if_handler);
-	ep_register(NOTI_EP_NUM, noti_ep_handler);
-	ep_register(DATA_EP_NUM, data_ep_handler);
+	if_cb_register(ACM_IF_NUM, cdc_request_handler);
+	ep_cb_register(NOTI_EP_NUM, noti_ep_handler);
+	ep_cb_register(DATA_EP_NUM, data_ep_handler);
 
 	dma_register(NOTI_EP_NUM, noti_ep_buf);
 	dma_register(DATA_EP_NUM, data_ep_buf);

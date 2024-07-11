@@ -2,7 +2,13 @@
 
 #include "CH58x_common.h"
 
-#include "usb.h"
+#include "utils.h"
+
+uint8_t *cfg_desc;
+
+// FIXME: here wasting 1KiB of ram
+void (*if_handlers[256])(USB_SETUP_REQ *request);
+void (*ep_handlers[7])();
 
 /* Configuration Descriptor template */
 USB_CFG_DESCR cfg_static = {
@@ -11,15 +17,10 @@ USB_CFG_DESCR cfg_static = {
 	.wTotalLength = sizeof(USB_CFG_DESCR), // will be updated on cfg_desc_add()
 	.bNumInterfaces = 0, // will be updated on cfg_desc_add()
 	.bConfigurationValue = 0x01,
-	.iConfiguration = 4, // TODO: add get_string
+	.iConfiguration = 4,
 	.bmAttributes = 0xA0,
 	.MaxPower = 50 // mA
 };
-
-uint8_t *cfg_desc; // FIXME:
-
-if_handler_t if_handlers[256]; // FIXME: here wasting 1KiB of ram
-ep_handler_t ep_handlers[7];
 
 void cfg_desc_append(void *desc)
 {
@@ -37,24 +38,23 @@ void cfg_desc_append(void *desc)
 	((USB_CFG_DESCR *)cfg_desc)->bNumInterfaces += ((uint8_t *)desc)[1] == 0x04;
 }
 
-int ep_register(int ep_num, ep_handler_t handler)
+int ep_cb_register(int ep_num, void (*cb)())
 {
 	if (ep_num > 8)
 		return -1;
 	if (ep_handlers[ep_num]) // already registerd
 		return -1;
 
-	ep_handlers[ep_num] = handler;
+	ep_handlers[ep_num] = cb;
 	return 0;
 }
 
-// TODO: rename to 'requests_register'
-int if_register(uint8_t if_num, if_handler_t handler)
+int if_cb_register(uint8_t if_num, void (*cb)(USB_SETUP_REQ *request))
 {
 	if (if_handlers[if_num]) // already registered
 		return -1;
 
-	if_handlers[if_num] = handler;
+	if_handlers[if_num] = cb;
 	return 0;
 }
 
