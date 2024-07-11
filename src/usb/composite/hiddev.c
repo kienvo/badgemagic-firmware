@@ -13,7 +13,6 @@ static __attribute__((aligned(4))) uint8_t ep_buf[64 + 64];
 static uint8_t *const ep_out = ep_buf;
 static uint8_t *const ep_in = ep_buf + 64;
 
-static uint8_t hid_report[64];
 static void (*on_write)(uint8_t *buf, uint16_t len);
 
 static USB_ITF_DESCR if_desc = {
@@ -44,7 +43,7 @@ static USB_ENDP_DESCR read_ep_desc = {
 	.bDescriptorType = USB_DESCR_TYP_ENDP,
 	.bEndpointAddress = 0x80 | EP_NUM, /* IN endpoint */
 	.bmAttributes = 0x03, /* exchange data over Interrupt */
-	.wMaxPacketSize = sizeof(hid_report), /* bytes */
+	.wMaxPacketSize = MAX_PACKET_SIZE, /* bytes */
 	.bInterval = 0xff /* polling interval */
 };
 
@@ -53,7 +52,7 @@ static USB_ENDP_DESCR write_ep_desc = {
 	.bDescriptorType = USB_DESCR_TYP_ENDP,
 	.bEndpointAddress = EP_NUM, /* IN endpoint */
 	.bmAttributes = 0x03, /* exchange data over Interrupt */
-	.wMaxPacketSize = sizeof(hid_report), /* bytes */
+	.wMaxPacketSize = MAX_PACKET_SIZE, /* bytes */
 	.bInterval = 8 /* polling interval */
 };
 
@@ -106,8 +105,6 @@ static void if_handler(USB_SETUP_REQ * request)
 
 	case HID_GET_REPORT:
 		PRINT("- HID_GET_REPORT\n");
-		// prepare_handshake(ep_num, ACK, 1, request->wLength);
-		// TODO: update this request, ignore for now
 		break;
 
 	case HID_GET_IDLE:
@@ -122,7 +119,6 @@ static void if_handler(USB_SETUP_REQ * request)
 
 	case HID_SET_REPORT:
 		PRINT("- HID_SET_REPORT\n");
-		// Enable control register to receive interrupt (expect receiving DATA1 on EP_NUM)
 		ctrl_ack();
 		break;
 
@@ -133,7 +129,6 @@ static void if_handler(USB_SETUP_REQ * request)
 
 	case HID_SET_PROTOCOL:
 		PRINT("- HID_SET_PROTOCOL\n");
-		// TODO: update this request, ignore for now
 		break;
 
 	default:
@@ -153,18 +148,16 @@ static void ep_handler(USB_SETUP_REQ *request)
 	case UIS_TOKEN_OUT:
 		if (on_write)
 			on_write(ep_out, R8_USB_RX_LEN);
-		prepare_handshake(EP_NUM, ACK, tog, 0);
+		set_handshake(EP_NUM, ACK, tog, 0);
 		tog = !tog;
 		break;
 
 	case UIS_TOKEN_IN:
-		// TODO: receving data (read)
-		PRINT("received a interrupt (read request)\n");
 		if (intflag) {
 			intflag = 0;
-			prepare_handshake(EP_NUM, ACK, 1, sizeof(hid_report));
+			set_handshake(EP_NUM, ACK, 1, MAX_PACKET_SIZE);
 		} else {
-			prepare_handshake(EP_NUM, NAK, 1, 0);
+			set_handshake(EP_NUM, NAK, 1, 0);
 		}
 		break;
 	
@@ -173,13 +166,12 @@ static void ep_handler(USB_SETUP_REQ *request)
 	}
 }
 
-// TODO: remove this, as it not suitable for current use case
-void hiddev_report(uint8_t key)
+// In case we want to send something to the host
+void hiddev_report(void *buf)
 {
-	hid_report[2] = key;
-	memcpy(ep_in, hid_report, sizeof(hid_report));
-	prepare_handshake(EP_NUM, ACK, 0, sizeof(hid_report));
-	intflag = 1;
+	// memcpy(ep_in, hid_report, sizeof(hid_report));
+	// set_handshake(EP_NUM, ACK, 0, sizeof(hid_report));
+	// intflag = 1;
 }
 
 void hiddev_onWrite(void (*cb)(uint8_t *buf, uint16_t len))

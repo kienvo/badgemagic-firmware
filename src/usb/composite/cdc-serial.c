@@ -94,15 +94,7 @@ static USB_ENDP_DESCR rx_ep_desc = {
 static void acm_if_handler(USB_SETUP_REQ * request)
 {
 	_TRACE();
-	static uint8_t report_val, idle_val;
-	uint8_t req = request->bRequest;
-	uint16_t type = request->wValue >> 8;
-
-	switch(req) {
-
-	default:
-		break;
-	}
+	// Handle CDC ACM class request here
 }
 
 static void noti_ep_handler(USB_SETUP_REQ *request)
@@ -115,7 +107,7 @@ static void noti_ep_handler(USB_SETUP_REQ *request)
 		PRINT("- USB_CLEAR_FEATURE\n");
 		PRINT("wFeatureSelector: 0x%02x\n", request->wValue);
 		if (request->wValue == 0) { // Endpoint halt
-			prepare_handshake(NOTI_EP_NUM, ACK, 1, 0);
+			set_handshake(NOTI_EP_NUM, ACK, 1, 0);
 		}
 		break;
 
@@ -124,7 +116,7 @@ static void noti_ep_handler(USB_SETUP_REQ *request)
 	}
 }
 
-static int req_len;
+volatile uint16_t transferred;
 
 static void data_ep_handler(USB_SETUP_REQ *request)
 {
@@ -137,14 +129,14 @@ static void data_ep_handler(USB_SETUP_REQ *request)
 		if (on_write)
 			on_write(data_ep_out, R8_USB_RX_LEN);
 		tog = !tog;
-		prepare_handshake(DATA_EP_NUM, ACK, tog, 0);
+		set_handshake(DATA_EP_NUM, ACK, tog, 0);
 		break;
 
 	case UIS_TOKEN_IN:
-		if (req_len > 0) { // FIXME: move to multiple transfer, here just testing
-			req_len = 0;
+		if (transferred == 0) {
+			transferred = 1;
 		} else {
-			prepare_handshake(DATA_EP_NUM, STALL, 1, 0);
+			set_handshake(DATA_EP_NUM, NAK, 1, 0);
 		}
 		break;
 	
@@ -153,13 +145,47 @@ static void data_ep_handler(USB_SETUP_REQ *request)
 	}
 }
 
-void cdc_acm_tx(uint8_t *buf, uint8_t len)
+void cdc_fill_IN(uint8_t *buf, uint8_t len)
 {
+	if (len > MAX_PACKET_SIZE)
+		return;
+
 	static int tog;
+
 	memcpy(data_ep_in, buf, len);
-	prepare_handshake(DATA_EP_NUM, ACK, tog, len);
+	set_handshake(DATA_EP_NUM, ACK, tog, len);
+
 	tog = !tog;
-	req_len = len;
+	transferred = 0;
+}
+
+static int wait_until_sent(uint16_t timeout_ms)
+{
+	while(timeout_ms--) {
+		if (transferred) {
+			return 0;
+		}
+		DelayMs(1);
+	}
+	return -1;
+}
+
+int cdc_tx_poll(uint8_t *buf, int len, uint16_t timeout_ms)
+{
+	int i = 0;
+	while (len > MAX_PACKET_SIZE) {
+		cdc_fill_IN(buf + i, MAX_PACKET_SIZE);
+		if (wait_until_sent(timeout_ms))
+			return -1;
+
+		i += MAX_PACKET_SIZE;
+		len -= MAX_PACKET_SIZE;
+	}
+	cdc_fill_IN(buf + i, len);
+	if (wait_until_sent(timeout_ms))
+		return -1;
+
+	return 0;
 }
 
 void cdc_onWrite(void (*cb)(uint8_t *buf, uint16_t len))

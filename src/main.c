@@ -214,7 +214,7 @@ int main()
 		handle_mode_transition();
 
 		sprintf(s, "abc %d\n", j++);
-		cdc_acm_tx(s, strlen(s));
+		cdc_tx_poll(s, strlen(s), 100);
 		DelayMs(200);
     }
 }
